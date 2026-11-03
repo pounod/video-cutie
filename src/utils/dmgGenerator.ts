@@ -249,11 +249,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: 安装项目依赖
         run: |
-          npm ci || npm install
+          if [ -f "package-lock.json" ]; then
+            npm ci || npm install --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps
+          fi
 
       - name: 构建 Web 应用前端产物
         run: |

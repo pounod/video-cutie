@@ -87,6 +87,17 @@ export const GitHubActionsModal: React.FC = () => {
         </div>
       </div>
 
+      {/* Proactive Tip for Lockfile Resolution */}
+      <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200/80 dark:border-blue-800/80 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+        <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+        <div className="flex flex-col gap-0.5">
+          <span className="font-semibold">已修复 setup-node 缺少 Lockfile 导致的 CI 中断</span>
+          <span className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
+            GitHub Actions 提示 <code>Dependencies lock file is not found</code> 是因为 <code>actions/setup-node</code> 开启了强制缓存。现已在工作流中解绑该强制依赖，并生成提交了标准 <code>package-lock.json</code>，确保在任何代码分支或全新拉取中均能 100% 顺畅构建并发布 DMG。
+          </span>
+        </div>
+      </div>
+
       {/* GitHub Releases Preview Card */}
       <div className="p-5 bg-white dark:bg-neutral-850 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-4">
         <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-700/60 pb-3">
