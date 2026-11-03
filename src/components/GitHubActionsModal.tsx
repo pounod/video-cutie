@@ -15,36 +15,33 @@ export const GitHubActionsModal: React.FC = () => {
     downloadFile('build-dmg.yml', GITHUB_WORKFLOW_YAML, 'text/yaml');
   };
 
-  const releaseReportText = `# 优化完成汇报（v1.1）
+  const releaseReportText = `# 优化完成汇报（v1.1.1）
 
 ### 🏷️ 软件基本信息
 - **中文名称**：视频剪辑姬
 - **英文名称**：Video Cutie
-- **当前版本**：v1.1
+- **当前版本**：v1.1.1
 - **运行平台**：macOS 11.0 Big Sur 及以上（支持 macOS 15+ Sequoia）
 - **芯片架构**：Universal 通用二进制架构（原生同时兼容 Apple Silicon M1~M4 与 Intel x86_64）
+- **客户端架构**：原生 macOS Cocoa + WebKit 独立桌面窗口程序（无任何外部浏览器依赖）
 - **核心算法**：音视频流无损直接复制（-c:v copy -c:a copy）+ 毫秒级时间戳归零（-avoid_negative_ts make_zero）
 
 ---
 
-### 🚀 v1.1 核心优化与更新内容
+### 🚀 v1.1.1 核心优化与修复内容
 
-#### 1. 软件品牌与视觉升级
-- **更名发布**：应用正式确立中文名「视频剪辑姬」、英文名「Video Cutie」，版本号同步升级为 1.1。
-- **全新扁平化 macOS 图标**：重绘符合现代 Apple Design 规范的圆角 Squircle 图标，融入灵动胶片切片、微光星芒与极简剪刀元素。
+#### 1. 适配专属 macOS 应用图标（解决安装后无图标问题）
+- 引入符合 Apple HIG 规范的高清 AppIcon.icns 文件，涵盖 16x16 至 1024x1024 完整尺寸。
+- 在 Info.plist 与 DMG 卷标中规范配置，保证在 Dock、Finder、Launchpad 和切换栏均正常显示。
 
-#### 2. 建立完整的 GitHub Actions 自动化 CI/CD 构建体系
-- **手动触发构建（workflow_dispatch）**：代码同步至 GitHub 仓库后，直接在 Actions 面板点击「Run workflow」即可一键触发 macOS 编译流。
-- **自动发布至 GitHub Releases**：
-  - 发布标题规范化设定为：视频剪辑姬（Video Cutie）v1.1
-  - 自动提取本次「优化完成汇报」作为 Releases 正文。
-  - 自动编译生成并上传 VideoCutie-1.1-Universal.dmg 与 .zip 免安装包。
+#### 2. 生成 macOS 原生桌面客户端界面（彻底解决跳转 localhost:3000 空白页问题）
+- 编写并集成原生 macOS Cocoa + WebKit 客户端主程序（src-macos/main.swift）。
+- 在 GitHub Actions 编译环境中，通过 swiftc 直接生成 Universal 二进制可执行文件。
+- 双击直接以独立原生窗口（NSWindow）呈现视频裁剪控制台，离线运行，零端口冲突，不再打开浏览器！
 
-#### 3. 时间智能自动补全深度增强（012536 → 01:25:36）
-- **数字自动切分**：输入 012536 自动补全为 01:25:36，兼顾时分秒合法性与默认边界（省略开始默认为0，省略结束默认为总时长）。
-
-#### 4. 原画级音视频流直接复制（-c copy）体验完善
-- 绝对零画质损耗，保留母带级分辨率、码率、HDR 与原声音频。`;
+#### 3. GitHub Actions 自动化构建与 Releases 同步
+- 自动构建并发布 VideoCutie-1.1.1-Universal.dmg。
+- Releases 标题规范设定为：视频剪辑姬（Video Cutie）v1.1.1。`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -124,7 +121,7 @@ export const GitHubActionsModal: React.FC = () => {
                 Latest Release
               </span>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">Tag: v1.1</span>
+            <span className="text-xs text-neutral-500 font-mono">Tag: v1.1.1</span>
           </div>
 
           <div className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed border-t border-neutral-200 dark:border-neutral-800 pt-3 flex flex-col gap-2">
@@ -145,13 +142,13 @@ export const GitHubActionsModal: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
                 <span className="font-mono font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                  VideoCutie-1.1-Universal.dmg
+                  VideoCutie-1.1.1-Universal.dmg
                 </span>
                 <span className="text-[11px] font-mono text-neutral-500 shrink-0">~85 MB</span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
                 <span className="font-mono font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                  VideoCutie-1.1-macOS-Universal.zip
+                  VideoCutie-1.1.1-macOS-Universal.zip
                 </span>
                 <span className="text-[11px] font-mono text-neutral-500 shrink-0">~78 MB</span>
               </div>

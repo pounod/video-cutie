@@ -52,26 +52,30 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-xs">
-            专为 macOS 设计的视频极速无损裁剪工具。支持拖拽导入视频、时间自动补全 (012536 → 01:25:36)、原画音视频流复制 (-c copy)、以及 GitHub Actions 自动化构建发布 Universal DMG。
+            专为 macOS 设计的原生视频极速无损裁剪客户端。支持拖拽导入、时间自动补全 (012536 → 01:25:36)、原画音视频流复制 (-c copy)、以及 GitHub Actions 自动化构建发布原生 Universal DMG。
           </p>
 
           {/* Checklist of met requirements */}
           <div className="w-full bg-neutral-50 dark:bg-neutral-800/60 rounded-xl p-3 border border-neutral-100 dark:border-neutral-800 text-left text-xs space-y-1.5">
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>中文名「视频剪辑姬」，英文名「Video Cutie」v1.1</span>
+              <span>「视频剪辑姬（Video Cutie）v1.1.1」原生桌面客户端</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>GitHub Actions 自动化构建 .dmg 并发布至 Releases</span>
+              <span>已适配标准 AppIcon.icns，Dock/Finder/切换器完整展示</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>Releases 标题设定为：视频剪辑姬（Video Cutie）v1.1</span>
+              <span>原生 Cocoa 客户端窗口，彻底告别浏览器与空白页</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>Releases 正文自动关联每次「优化完成汇报」</span>
+              <span>GitHub Actions 自动化构建 Universal .dmg 并发布 Releases</span>
+            </div>
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>Releases 标题设定为：视频剪辑姬（Video Cutie）v1.1.1</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />

@@ -4,13 +4,13 @@
 
 # 视频剪辑姬（Video Cutie）
 
-**专为 macOS 设计的极速无损视频裁剪工具**  
-*Ultra-Fast, Lossless Video Trimming Tool Engineered for macOS*
+**专为 macOS 设计的原生极速无损视频裁剪客户端**  
+*Ultra-Fast, Lossless Native macOS Video Trimming Desktop Client*
 
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B%20(Big%20Sur%20~%20Sequoia)-000000?style=flat&logo=apple&logoColor=white)](https://apple.com)
 [![Architecture](https://img.shields.io/badge/Architecture-Universal%20(arm64%20%2B%20x86__64)-0ea5e9?style=flat&logo=apple)](https://github.com)
 [![FFmpeg](https://img.shields.io/badge/Engine-FFmpeg%20Stream%20Copy%20(-c%20copy)-007808?style=flat&logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
-[![Version](https://img.shields.io/badge/Version-v1.1-ec4899?style=flat)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-v1.1.1-ec4899?style=flat)](https://github.com)
 [![CI/CD](https://img.shields.io/badge/GitHub%20Actions-Build%20%26%20Release%20DMG-22c55e?style=flat&logo=githubactions&logoColor=white)](https://github.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat)](./LICENSE)
 
@@ -22,12 +22,15 @@
 
 ## 📖 项目简介
 
-**视频剪辑姬（Video Cutie）** 是一款专为苹果 macOS 生态打造的现代扁平化无损视频剪切应用。
+**视频剪辑姬（Video Cutie）** 是一款专为苹果 macOS 生态打造的原生无损视频剪切客户端。
 
 传统剪辑软件（如 Premiere、剪映）导出片段时普遍会进行重新编解码，不仅占用大量的 CPU/GPU 算力、发热耗电，还会破坏画质并导致偏色。  
 **视频剪辑姬** 依托 macOS 终端已安装的 FFmpeg 原生能力，采用**音视频流复制（Stream Copy）**技术，直接将原封装内的未解压数据包无损截取并写入新文件，实现 **0 画质损耗、0 渲染等待、毫秒级极速导出**！
 
-同时提供**时间智能补全（输入 `012536` 自动补全为 `01:25:36`）**、**双架构通用 macOS `.dmg` 安装包**与 **GitHub Actions 自动化 CI/CD 构建**。
+### 🌸 v1.1.1 核心修复与升级
+1. **原生 macOS Cocoa 客户端界面**：通过原生 WebKit 独立桌面窗口程序（`NSWindow`）呈现操作界面，彻底告别原先打开浏览器 `localhost:3000` 连接失败或空白页的问题，**100% 离线、零端口冲突、即开即用**。
+2. **专属图标全场景适配**：生成并挂载标准 Apple 视网膜高清 `AppIcon.icns` 图标，在 macOS 访达（Finder）、程序坞（Dock）、启动台（Launchpad）及应用切换栏中均完美显示。
+3. **版本号升级**：全面规范升级至 **v1.1.1**。
 
 ---
 
@@ -63,10 +66,10 @@
 - 提供**一键复制终端完整指令**、**下载 macOS 执行脚本（`trim_lossless.sh`）**或通过 AppleScript 唤醒 Terminal 自动执行。
 - 内置 **macOS Terminal 日志模拟器**，直观预览以 400x~1000x 超高速流复制完成的终端输出过程。
 
-### 5. 通用二进制架构（Universal Binary）
-- 同一份 DMG 安装包同时内嵌并优化支持：
-  - 🍏 **Apple Silicon**：M1、M2、M3、M4 全系列芯片（原生 arm64 指令，极低功耗）
-  - 💻 **Intel 处理器**：Core i5、i7、i9、Xeon 等 Mac 机型（原生 x86_64 指令，无需 Rosetta 2 翻译）
+### 5. 原生 Universal 双架构与视网膜图标适配
+- **独立 Cocoa 客户端窗口**：基于 Swift Cocoa + WebKit 编译，双击直接运行独立 macOS App 窗口，不调用外部浏览器。
+- **Retina 高清图标**：集成标准 16×16 至 1024×1024 完整 `AppIcon.icns` 图标。
+- **Universal Binary**：同时原生适配 **Apple Silicon（M1/M2/M3/M4 arm64）** 与 **Intel（x86_64）** 芯片。
 
 ---
 
@@ -101,12 +104,12 @@
 
 ### 方式一：下载 macOS Universal `.dmg` 安装包（推荐）
 1. 访问本仓库的 [Releases 页面](https://github.com)；
-2. 下载最新发布的 `VideoCutie-1.1-Universal.dmg`；
+2. 下载最新发布的 `VideoCutie-1.1.1-Universal.dmg`；
 3. 双击挂载后，将 **视频剪辑姬.app** 拖入 **Applications（应用程序）** 文件夹即可！
 
 ```
 +-------------------------------------------------------+
-|  视频剪辑姬 1.1 安装器                                |
+|  视频剪辑姬 1.1.1 安装器                              |
 |                                                       |
 |    [ 视频剪辑姬.app ]   ======>   [ Applications ]    |
 |                                                       |
@@ -129,19 +132,19 @@ ffmpeg -ss 00:01:25 -to 00:03:40 -i "input.mp4" -c:v copy -c:a copy -avoid_negat
 1. **推送代码**：将代码提交同步至 GitHub 仓库：
    ```bash
    git add .
-   git commit -m "feat: 发布视频剪辑姬 v1.1"
+   git commit -m "feat: 发布视频剪辑姬 v1.1.1"
    git push origin main
    ```
 2. **手动触发构建**：
    - 打开 GitHub 仓库，点击顶部 **Actions** 标签页；
    - 在左侧选择 **`视频剪辑姬（Video Cutie）- macOS Universal DMG 构建与发布`**；
-   - 点击右侧 **「Run workflow」** 下拉框，确认版本号为 `1.1`，点击运行。
+   - 点击右侧 **「Run workflow」** 下拉框，确认版本号为 `1.1.1`，点击运行。
 3. **自动发布 Releases**：
-   - GitHub Actions 运行器（macOS）将自动编译 Web 产物，构建兼容 Apple Silicon 与 Intel 的 Universal DMG；
+   - GitHub Actions 运行器（macOS）将自动编译前端并调用 `swiftc` 生成 Universal 原生桌面客户端，打包兼容 Apple Silicon 与 Intel 的 Universal DMG；
    - 构建完成后自动创建 Release，标题格式规范为：
-     $$\text{视频剪辑姬（Video Cutie）v1.1}$$
-   - 正文自动关联并注入仓库中的 `RELEASE_REPORT_v1.1.md`（优化完成汇报）；
-   - 自动上传 `VideoCutie-1.1-Universal.dmg` 与 `.zip` 安装包至附件。
+     $$\text{视频剪辑姬（Video Cutie）v1.1.1}$$
+   - 正文自动关联并注入仓库中的 `RELEASE_REPORT_v1.1.1.md`（优化完成汇报）；
+   - 自动上传 `VideoCutie-1.1.1-Universal.dmg` 与 `.zip` 安装包至附件。
 
 ---
 
@@ -149,7 +152,7 @@ ffmpeg -ss 00:01:25 -to 00:03:40 -i "input.mp4" -c:v copy -c:a copy -avoid_negat
 
 ### 前置环境
 - Node.js >= 20.0.0
-- macOS 系统（用于本地测试 `hdiutil` / `create-dmg`）
+- macOS 系统（用于本地测试 `swiftc`、`iconutil` 与 `hdiutil`）
 - 本地终端已安装 FFmpeg（`brew install ffmpeg`）
 
 ### 常用命令
@@ -158,16 +161,16 @@ ffmpeg -ss 00:01:25 -to 00:03:40 -i "input.mp4" -c:v copy -c:a copy -avoid_negat
 git clone https://github.com/your-username/video-cutie.git
 cd video-cutie
 
-# 2. 安装依赖 (使用锁文件或 legacy 模式)
+# 2. 安装依赖
 npm install
 
 # 3. 启动本地开发服务 (默认端口 3000)
 npm run dev
 
-# 4. 构建前端生产产物
+# 4. 构建前端生产产物 (相对路径模式)
 npm run build
 
-# 5. 本地一键打包 macOS Universal DMG 安装包
+# 5. 本地一键打包 macOS 原生客户端与 Universal DMG 安装包
 npm run build:dmg
 # 打包产物将生成在 dist-dmg/ 目录下
 ```
@@ -182,9 +185,13 @@ npm run build:dmg
 │   └── workflows/
 │       └── build-dmg.yml             # GitHub Actions CI/CD 自动化构建与 Releases 发布
 ├── scripts/
-│   └── build-dmg.sh                  # macOS Universal DMG 原生打包脚本
+│   └── build-dmg.sh                  # macOS Universal DMG 原生打包与编译脚本
+├── src-macos/
+│   └── main.swift                    # macOS 原生 Cocoa + WebKit 独立桌面窗口程序入口
 ├── src/
-│   ├── assets/images/                # 现代扁平化应用图标等静态资源
+│   ├── assets/
+│   │   ├── AppIcon.icns              # 视网膜标准 macOS 原生图标文件 (16x16 ~ 1024x1024)
+│   │   └── images/                   # 扁平化图标设计图
 │   ├── components/
 │   │   ├── MacTitleBar.tsx           # macOS 经典红黄绿信号灯与标题栏
 │   │   ├── DropZone.tsx              # 拖拽导入与预置样片加载器
@@ -203,9 +210,8 @@ npm run build:dmg
 │   ├── App.tsx                       # 客户端主界面
 │   ├── index.css                     # Tailwind CSS v4 与 macOS 视觉样式
 │   └── main.tsx                      # 客户端启动入口
-├── RELEASE_REPORT_v1.1.md            # v1.1 优化完成汇报 (自动作为 Releases 正文)
+├── RELEASE_REPORT_v1.1.1.md          # v1.1.1 优化完成汇报 (自动作为 Releases 正文)
 ├── package.json                      # 项目依赖与编译脚本
-├── package-lock.json                 # 依赖锁定文件 (确保 CI 100% 成功)
 └── README.md                         # 软件使用与技术文档
 ```
 

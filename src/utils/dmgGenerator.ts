@@ -17,12 +17,12 @@ export interface DmgPackageInfo {
 export const APP_INFO: DmgPackageInfo = {
   appNameZh: '视频剪辑姬',
   appNameEn: 'Video Cutie',
-  version: '1.1',
-  releaseTitle: '视频剪辑姬（Video Cutie）v1.1',
+  version: '1.1.1',
+  releaseTitle: '视频剪辑姬（Video Cutie）v1.1.1',
   bundleId: 'com.videocutie.macos.app',
   minSystemVersion: '11.0 (macOS Big Sur ~ macOS 15+ Sequoia)',
   architectures: ['arm64 (Apple Silicon M1/M2/M3/M4)', 'x86_64 (Intel 64-bit)'],
-  filename: 'VideoCutie-1.1-Universal.dmg',
+  filename: 'VideoCutie-1.1.1-Universal.dmg',
 };
 
 /**
@@ -41,6 +41,8 @@ export function generateInfoPlist(): string {
     <string>VideoCutie</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.videocutie.macos.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -50,9 +52,9 @@ export function generateInfoPlist(): string {
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1</string>
+    <string>1.1.1</string>
     <key>CFBundleVersion</key>
-    <string>1.1.0</string>
+    <string>1.1.1</string>
     <key>LSMinimumSystemVersion</key>
     <string>11.0</string>
     <key>NSHighResolutionCapable</key>
@@ -218,13 +220,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号 (如 1.1)'
+        description: '发布版本号 (如 1.1.1)'
         required: true
-        default: '1.1'
+        default: '1.1.1'
       release_title:
         description: 'GitHub Release 标题'
         required: true
-        default: '视频剪辑姬（Video Cutie）v1.1'
+        default: '视频剪辑姬（Video Cutie）v1.1.1'
       create_release:
         description: '构建完成后是否自动在 GitHub Releases 发布'
         required: true
@@ -239,7 +241,7 @@ permissions:
 
 jobs:
   build-macos-dmg:
-    name: 构建 macOS Universal DMG (.dmg)
+    name: 构建 macOS Universal 原生客户端与 DMG
     runs-on: macos-latest
     steps:
       - name: 检出仓库代码
@@ -256,7 +258,7 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
 
-      - name: 构建 Web 应用前端产物
+      - name: 构建 Web 客户端界面资源 (相对路径 base: ./)
         run: |
           npm run build
 
@@ -264,20 +266,20 @@ jobs:
         run: |
           brew install create-dmg || true
 
-      - name: 执行 Universal DMG 打包脚本
+      - name: 编译原生客户端与执行 Universal DMG 打包脚本
         env:
-          APP_VERSION: \${{ github.event.inputs.version || '1.1' }}
+          APP_VERSION: \${{ github.event.inputs.version || '1.1.1' }}
           APP_NAME_ZH: "视频剪辑姬"
           APP_NAME_EN: "Video Cutie"
         run: |
           chmod +x ./scripts/build-dmg.sh
-          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.1' }}"
+          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.1.1' }}"
 
       - name: 准备优化完成汇报 (Release Notes)
         id: release_notes
         run: |
-          if [ -f "RELEASE_REPORT_v1.1.md" ]; then
-            echo "notes_file=RELEASE_REPORT_v1.1.md" >> $GITHUB_OUTPUT
+          if [ -f "RELEASE_REPORT_v1.1.1.md" ]; then
+            echo "notes_file=RELEASE_REPORT_v1.1.1.md" >> $GITHUB_OUTPUT
           else
             echo "notes_file=README.md" >> $GITHUB_OUTPUT
           fi
@@ -294,8 +296,8 @@ jobs:
         if: \${{ github.event.inputs.create_release != false }}
         uses: softprops/action-gh-release@v2
         with:
-          name: \${{ github.event.inputs.release_title || '视频剪辑姬（Video Cutie）v1.1' }}
-          tag_name: "v\${{ github.event.inputs.version || '1.1' }}"
+          name: \${{ github.event.inputs.release_title || '视频剪辑姬（Video Cutie）v1.1.1' }}
+          tag_name: "v\${{ github.event.inputs.version || '1.1.1' }}"
           body_path: \${{ steps.release_notes.outputs.notes_file }}
           draft: false
           prerelease: false
