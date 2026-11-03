@@ -258,7 +258,7 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
 
-      - name: 构建 Web 客户端界面资源 (相对路径 base: ./)
+      - name: 构建 Web 客户端界面资源
         run: |
           npm run build
 
