@@ -1,0 +1,6 @@
+{
+  "name": "TrimCraft 1.0 - macOS 视频无损裁剪工具",
+  "description": "专为 macOS 设计的专业视频无损快速裁剪工具。支持拖拽视频、自动补全时间格式(012536 -> 01:25:36)、原画音视频流复制无损裁剪(-c copy)、生成通用 macOS DMG 安装包与终端一键执行。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
