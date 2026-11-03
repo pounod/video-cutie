@@ -36,13 +36,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: 安装项目依赖
+      - name: 安装项目依赖 (配置 macOS 原生二进制)
         run: |
-          if [ -f "package-lock.json" ]; then
-            npm ci || npm install --legacy-peer-deps
-          else
-            npm install --legacy-peer-deps
-          fi
+          # 解决 npm/cli#4828：清理可能存在的跨平台锁文件与缓存，在 macOS 运行器上全新安装匹配的 darwin native bindings
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
 
       - name: 构建 Web 应用前端产物
         run: |
@@ -67,9 +65,7 @@ jobs:
           if [ -f "RELEASE_REPORT_v1.1.md" ]; then
             echo "notes_file=RELEASE_REPORT_v1.1.md" >> $GITHUB_OUTPUT
           else
-            echo "## 视频剪辑姬（Video Cutie）v1.1 优化完成汇报" > RELEASE_NOTES.md
-            echo "本次更新主要优化了音视频流无损复制、时间格式智能自动补全以及 GitHub Actions 自动化构建 DMG。" >> RELEASE_NOTES.md
-            echo "notes_file=RELEASE_NOTES.md" >> $GITHUB_OUTPUT
+            echo "notes_file=README.md" >> $GITHUB_OUTPUT
           fi
 
       - name: 上传构建产物 Artifacts

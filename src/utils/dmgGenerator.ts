@@ -250,13 +250,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: 安装项目依赖
+      - name: 安装项目依赖 (配置 macOS 原生二进制)
         run: |
-          if [ -f "package-lock.json" ]; then
-            npm ci || npm install --legacy-peer-deps
-          else
-            npm install --legacy-peer-deps
-          fi
+          # 解决 npm/cli#4828：清理可能存在的跨平台锁文件与缓存，在 macOS 运行器上全新安装匹配的 darwin native bindings
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
 
       - name: 构建 Web 应用前端产物
         run: |
