@@ -113,17 +113,17 @@ fi
 # 5. 打包内置 FFmpeg 二进制 (Requirement: 将 FFmpeg 打包进客户端)
 echo "📦 正在将 FFmpeg 原生引擎打包进客户端 (Contents/MacOS/ffmpeg)..."
 FFMPEG_SRC=""
-if [ -x "/opt/homebrew/bin/ffmpeg" ]; then
+if command -v ffmpeg >/dev/null 2>&1; then
+    FFMPEG_SRC="$(command -v ffmpeg)"
+elif [ -x "/opt/homebrew/bin/ffmpeg" ]; then
     FFMPEG_SRC="/opt/homebrew/bin/ffmpeg"
 elif [ -x "/usr/local/bin/ffmpeg" ]; then
     FFMPEG_SRC="/usr/local/bin/ffmpeg"
-elif command -v ffmpeg >/dev/null 2>&1; then
-    FFMPEG_SRC="$(command -v ffmpeg)"
 fi
 
-if [ -n "$FFMPEG_SRC" ] && [ -f "$FFMPEG_SRC" ]; then
-    echo "🚀 找到原生 FFmpeg: $FFMPEG_SRC，正在复制到 App Bundle..."
-    cp "$FFMPEG_SRC" "${APP_DIR}/Contents/MacOS/ffmpeg"
+if [ -n "${FFMPEG_SRC:-}" ] && [ -f "${FFMPEG_SRC:-}" ]; then
+    echo "🚀 找到原生 FFmpeg: [${FFMPEG_SRC}]，正在复制到 App Bundle..."
+    cp -L "${FFMPEG_SRC}" "${APP_DIR}/Contents/MacOS/ffmpeg"
     chmod +x "${APP_DIR}/Contents/MacOS/ffmpeg"
     echo "✅ 已成功将 FFmpeg 内置到客户端！"
 else
