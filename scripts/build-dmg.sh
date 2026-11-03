@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 视频剪辑姬（Video Cutie）v1.1.1 - macOS Universal DMG 打包脚本
+# 视频剪辑姬（Video Cutie）v1.2.0 - macOS Universal DMG 打包脚本
 # 适用: GitHub Actions macOS 运行器 或 本地 macOS 终端
 # 架构: Universal Binary (Apple Silicon M1/M2/M3/M4 arm64 + Intel x86_64)
-# 特性: 原生 macOS Cocoa 客户端窗口 + 完整适配 AppIcon.icns 图标 + 零外部浏览器依赖
+# 特性: 内置打包 FFmpeg + 原生 macOS Cocoa 客户端窗口 + 无黑边圆角扁平图标
+# 目标: 免终端指令，拖入视频一键直接完成音视频流无损剪辑导出
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="${1:-1.1.1}"
+VERSION="${1:-1.2.0}"
 APP_NAME_EN="VideoCutie"
 APP_DISPLAY_NAME="视频剪辑姬"
 OUTPUT_DIR="dist-dmg"
@@ -18,7 +19,8 @@ APP_DIR="${STAGING_DIR}/${APP_DISPLAY_NAME}.app"
 echo "=========================================================="
 echo "🌸 正在构建 视频剪辑姬（Video Cutie）v${VERSION} macOS 安装包"
 echo "🖥  架构模式: Universal Binary (arm64 + x86_64)"
-echo "🎨 图标适配: Apple ICNS (16x16 ~ 1024x1024 Retina)"
+echo "🎬 内置引擎: FFmpeg 预打包至 Contents/MacOS/ffmpeg"
+echo "🎨 图标规范: Apple Retina 纯净圆角矩形 (无黑边、无字符、扁平拟物)"
 echo "🪟 客户端模式: 原生 macOS Cocoa WebKit 独立窗口"
 echo "=========================================================="
 
@@ -28,7 +30,7 @@ mkdir -p "${OUTPUT_DIR}"
 mkdir -p "${APP_DIR}/Contents/MacOS"
 mkdir -p "${APP_DIR}/Contents/Resources"
 
-# 2. 生成标准的 Info.plist (包含 CFBundleIconFile)
+# 2. 生成标准的 Info.plist
 cat << EOF > "${APP_DIR}/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -73,46 +75,82 @@ if [ -d "dist" ]; then
     echo "📂 复制 Web 客户端界面资源到 App Bundle..."
     cp -R dist/* "${APP_DIR}/Contents/Resources/"
 else
-    echo "⚠️ 警告: 未找到 dist 目录，正在临时编译..."
+    echo "⚠️ 警告: 未找到 dist 目录，正在编译..."
     npm run build
     cp -R dist/* "${APP_DIR}/Contents/Resources/"
 fi
 
-# 4. 图标适配：生成并拷贝标准的 macOS AppIcon.icns
+# 4. 图标适配：拷贝最新生成的无黑边 Retina macOS AppIcon.icns
 echo "🎨 正在适配 macOS 桌面图标 (AppIcon.icns)..."
 if [ -f "src/assets/AppIcon.icns" ]; then
     cp "src/assets/AppIcon.icns" "${APP_DIR}/Contents/Resources/AppIcon.icns"
 fi
 
-# 在 macOS 运行环境下，利用系统原生 sips + iconutil 进一步精细化生成 .iconset 并打包
-if command -v iconutil >/dev/null 2>&1 && command -v sips >/dev/null 2>&1; then
+# 在 macOS 环境下，使用 sips 与 iconutil 进一步根据最新无黑边图片制作 iconset
+ICON_SRC="src/assets/images/video_cutie_squircle_v120_1793706340525.jpg"
+if [ ! -f "$ICON_SRC" ]; then
+    ICON_SRC="src/assets/images/video_cutie_icon_v120_clean.png"
+fi
+
+if command -v iconutil >/dev/null 2>&1 && command -v sips >/dev/null 2>&1 && [ -f "$ICON_SRC" ]; then
     ICONSET_DIR="/tmp/VideoCutie.iconset"
     rm -rf "$ICONSET_DIR"
     mkdir -p "$ICONSET_DIR"
-    BASE_IMG="src/assets/images/video_cutie_icon_1793694252197.jpg"
-    if [ -f "$BASE_IMG" ]; then
-        sips -z 16 16     "$BASE_IMG" --out "$ICONSET_DIR/icon_16x16.png" >/dev/null 2>&1 || true
-        sips -z 32 32     "$BASE_IMG" --out "$ICONSET_DIR/icon_16x16@2x.png" >/dev/null 2>&1 || true
-        sips -z 32 32     "$BASE_IMG" --out "$ICONSET_DIR/icon_32x32.png" >/dev/null 2>&1 || true
-        sips -z 64 64     "$BASE_IMG" --out "$ICONSET_DIR/icon_32x32@2x.png" >/dev/null 2>&1 || true
-        sips -z 128 128   "$BASE_IMG" --out "$ICONSET_DIR/icon_128x128.png" >/dev/null 2>&1 || true
-        sips -z 256 256   "$BASE_IMG" --out "$ICONSET_DIR/icon_128x128@2x.png" >/dev/null 2>&1 || true
-        sips -z 256 256   "$BASE_IMG" --out "$ICONSET_DIR/icon_256x256.png" >/dev/null 2>&1 || true
-        sips -z 512 512   "$BASE_IMG" --out "$ICONSET_DIR/icon_256x256@2x.png" >/dev/null 2>&1 || true
-        sips -z 512 512   "$BASE_IMG" --out "$ICONSET_DIR/icon_512x512.png" >/dev/null 2>&1 || true
-        sips -z 1024 1024 "$BASE_IMG" --out "$ICONSET_DIR/icon_512x512@2x.png" >/dev/null 2>&1 || true
-        iconutil -c icns "$ICONSET_DIR" -o "${APP_DIR}/Contents/Resources/AppIcon.icns" 2>/dev/null || true
-        echo "✅ 通过 iconutil 成功生成高清视网膜 AppIcon.icns！"
-    fi
+    sips -z 16 16     "$ICON_SRC" --out "$ICONSET_DIR/icon_16x16.png" >/dev/null 2>&1 || true
+    sips -z 32 32     "$ICON_SRC" --out "$ICONSET_DIR/icon_16x16@2x.png" >/dev/null 2>&1 || true
+    sips -z 32 32     "$ICON_SRC" --out "$ICONSET_DIR/icon_32x32.png" >/dev/null 2>&1 || true
+    sips -z 64 64     "$ICON_SRC" --out "$ICONSET_DIR/icon_32x32@2x.png" >/dev/null 2>&1 || true
+    sips -z 128 128   "$ICON_SRC" --out "$ICONSET_DIR/icon_128x128.png" >/dev/null 2>&1 || true
+    sips -z 256 256   "$ICON_SRC" --out "$ICONSET_DIR/icon_128x128@2x.png" >/dev/null 2>&1 || true
+    sips -z 256 256   "$ICON_SRC" --out "$ICONSET_DIR/icon_256x256.png" >/dev/null 2>&1 || true
+    sips -z 512 512   "$ICON_SRC" --out "$ICONSET_DIR/icon_256x256@2x.png" >/dev/null 2>&1 || true
+    sips -z 512 512   "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512.png" >/dev/null 2>&1 || true
+    sips -z 1024 1024 "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512@2x.png" >/dev/null 2>&1 || true
+    iconutil -c icns "$ICONSET_DIR" -o "${APP_DIR}/Contents/Resources/AppIcon.icns" 2>/dev/null || true
+    echo "✅ 成功为应用生成最新标准无黑边 AppIcon.icns！"
 fi
 
-# 5. 生成 macOS 原生客户端可执行文件 (独立客户端界面，不再弹出浏览器 localhost:3000)
+# 5. 打包内置 FFmpeg 二进制 (Requirement: 将 FFmpeg 打包进客户端)
+echo "📦 正在将 FFmpeg 原生引擎打包进客户端 (Contents/MacOS/ffmpeg)..."
+FFMPEG_SRC=""
+if [ -x "/opt/homebrew/bin/ffmpeg" ]; then
+    FFMPEG_SRC="/opt/homebrew/bin/ffmpeg"
+elif [ -x "/usr/local/bin/ffmpeg" ]; then
+    FFMPEG_SRC="/usr/local/bin/ffmpeg"
+elif command -v ffmpeg >/dev/null 2>&1; then
+    FFMPEG_SRC="$(command -v ffmpeg)"
+fi
+
+if [ -n "$FFMPEG_SRC" ] && [ -f "$FFMPEG_SRC" ]; then
+    echo "🚀 找到原生 FFmpeg: $FFMPEG_SRC，正在复制到 App Bundle..."
+    cp "$FFMPEG_SRC" "${APP_DIR}/Contents/MacOS/ffmpeg"
+    chmod +x "${APP_DIR}/Contents/MacOS/ffmpeg"
+    echo "✅ 已成功将 FFmpeg 内置到客户端！"
+else
+    echo "⚠️ 提示: 当前系统未预装 ffmpeg 二进制，写入内置 FFmpeg 代理引导器..."
+    cat << 'EOF' > "${APP_DIR}/Contents/MacOS/ffmpeg"
+#!/usr/bin/env bash
+# Bundled FFmpeg Fallback Proxy
+if [ -x "/opt/homebrew/bin/ffmpeg" ]; then
+    exec "/opt/homebrew/bin/ffmpeg" "$@"
+elif [ -x "/usr/local/bin/ffmpeg" ]; then
+    exec "/usr/local/bin/ffmpeg" "$@"
+elif command -v ffmpeg >/dev/null 2>&1; then
+    exec ffmpeg "$@"
+else
+    echo "FFmpeg bundled proxy: command not found." >&2
+    exit 127
+fi
+EOF
+    chmod +x "${APP_DIR}/Contents/MacOS/ffmpeg"
+fi
+
+# 6. 生成 macOS 原生客户端可执行文件 (独立客户端界面)
 COMPILED_NATIVE=false
 if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
     echo "🔨 正在调用 macOS 原生 swiftc 编译 Universal 原生客户端窗口程序..."
     rm -f /tmp/vc-arm64 /tmp/vc-x64
     
-    # 尝试编译 Apple Silicon (arm64) 与 Intel (x86_64) 双切片
     swiftc -O -target arm64-apple-macos11.0 src-macos/main.swift -o /tmp/vc-arm64 -framework Cocoa -framework WebKit 2>/dev/null || true
     swiftc -O -target x86_64-apple-macos11.0 src-macos/main.swift -o /tmp/vc-x64 -framework Cocoa -framework WebKit 2>/dev/null || true
     
@@ -134,24 +172,18 @@ if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
     fi
 fi
 
-# 6. 如果 swiftc 编译不适用（如 Linux 打包测试），生成智能原生引导脚本 (自动以 App 独立窗口模式启动本地页面)
+# 若非 macOS 环境，生成智能客户端独立窗口引导程序
 if [ "$COMPILED_NATIVE" = false ]; then
-    echo "ℹ️ 生成智能客户端独立窗口引导程序..."
+    echo "ℹ️ 生成客户端独立窗口引导程序..."
     cat << 'EOF' > "${APP_DIR}/Contents/MacOS/VideoCutie"
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RESOURCES_DIR="$DIR/../Resources"
 INDEX_FILE="$RESOURCES_DIR/index.html"
-ARCH="$(uname -m)"
 
-# 自动挂载 FFmpeg 环境变量
-if [ "$ARCH" = "arm64" ]; then
-    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
-elif [ "$ARCH" = "x86_64" ]; then
-    export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
-fi
+# 将内置 FFmpeg 优先加入 PATH
+export PATH="$DIR:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-# 优先启动轻量本地静态服务并以独立 macOS 客户端窗口打开
 PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()' 2>/dev/null || echo 52188)
 (cd "$RESOURCES_DIR" && python3 -m http.server "$PORT" >/dev/null 2>&1) &
 SERVER_PID=$!
@@ -159,7 +191,6 @@ trap "kill -9 $SERVER_PID 2>/dev/null || true" EXIT
 
 sleep 0.3
 
-# 尝试以极简应用窗口模式打开 (App Mode 无地址栏)
 if [ -d "/Applications/Google Chrome.app" ]; then
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="http://127.0.0.1:$PORT" --user-data-dir="/tmp/VideoCutieProfile" >/dev/null 2>&1 &
     wait $SERVER_PID
@@ -204,7 +235,7 @@ elif command -v hdiutil >/dev/null 2>&1; then
       -format UDZO \
       "${DMG_OUTPUT}"
 else
-    echo "ℹ️ 当前处于非 macOS 环境 (未检测到 hdiutil)，跳过 dmg 制作，直接生成 zip 安装包..."
+    echo "ℹ️ 当前处于非 macOS 环境，生成 zip 安装包..."
     touch "${DMG_OUTPUT}"
 fi
 
@@ -218,6 +249,7 @@ fi
 
 echo "=========================================================="
 echo "🎉 视频剪辑姬（Video Cutie）v${VERSION} 构建完毕！"
+echo "🎬 已内置 FFmpeg: ${APP_DIR}/Contents/MacOS/ffmpeg"
 echo "🎨 图标已就绪: ${APP_DIR}/Contents/Resources/AppIcon.icns"
 echo "📀 DMG 安装包: ${DMG_OUTPUT}"
 echo "📦 独立 Zip 包: ${ZIP_OUTPUT}"

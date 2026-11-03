@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GitBranch, Play, Check, Copy, Download, Tag, FileText, Sparkles, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { GitBranch, Check, Copy, Download, Tag, FileText, ShieldCheck } from 'lucide-react';
 import { GITHUB_WORKFLOW_YAML, downloadFile, APP_INFO } from '../utils/dmgGenerator';
 
 export const GitHubActionsModal: React.FC = () => {
@@ -15,33 +15,37 @@ export const GitHubActionsModal: React.FC = () => {
     downloadFile('build-dmg.yml', GITHUB_WORKFLOW_YAML, 'text/yaml');
   };
 
-  const releaseReportText = `# 优化完成汇报（v1.1.1）
+  const releaseReportText = `# 优化完成汇报（v1.2.0）
 
 ### 🏷️ 软件基本信息
 - **中文名称**：视频剪辑姬
 - **英文名称**：Video Cutie
-- **当前版本**：v1.1.1
+- **当前版本**：v1.2.0
 - **运行平台**：macOS 11.0 Big Sur 及以上（支持 macOS 15+ Sequoia）
 - **芯片架构**：Universal 通用二进制架构（原生同时兼容 Apple Silicon M1~M4 与 Intel x86_64）
-- **客户端架构**：原生 macOS Cocoa + WebKit 独立桌面窗口程序（无任何外部浏览器依赖）
-- **核心算法**：音视频流无损直接复制（-c:v copy -c:a copy）+ 毫秒级时间戳归零（-avoid_negative_ts make_zero）
+- **客户端架构**：原生 macOS Cocoa + WebKit 独立桌面窗口程序（离线独立运行）
+- **内置引擎**：FFmpeg 原生二进制预打包至 \`Contents/MacOS/ffmpeg\`（零终端命令，免手动安装）
+- **裁剪模式**：音视频流无损直接拷贝（-c:v copy -c:a copy）+ 时间戳精准对齐
 
 ---
 
-### 🚀 v1.1.1 核心优化与修复内容
+### 🚀 v1.2.0 核心优化内容
 
-#### 1. 适配专属 macOS 应用图标（解决安装后无图标问题）
-- 引入符合 Apple HIG 规范的高清 AppIcon.icns 文件，涵盖 16x16 至 1024x1024 完整尺寸。
-- 在 Info.plist 与 DMG 卷标中规范配置，保证在 Dock、Finder、Launchpad 和切换栏均正常显示。
+#### 1. 彻底去除终端指令，改为客户端纯图形化一键极速剪辑
+- 移除所有复制终端命令、下载 shell 脚本及终端日志的冗余交互。
+- 视频裁剪改为客户端原生一键导出：点击「一键无损剪辑导出」即可直接生成目标视频。
 
-#### 2. 生成 macOS 原生桌面客户端界面（彻底解决跳转 localhost:3000 空白页问题）
-- 编写并集成原生 macOS Cocoa + WebKit 客户端主程序（src-macos/main.swift）。
-- 在 GitHub Actions 编译环境中，通过 swiftc 直接生成 Universal 二进制可执行文件。
-- 双击直接以独立原生窗口（NSWindow）呈现视频裁剪控制台，离线运行，零端口冲突，不再打开浏览器！
+#### 2. 将 FFmpeg 打包进客户端，并由 GitHub Actions 自动化构建
+- 在 GitHub Actions 打包流中集成 \`brew install ffmpeg\`，并将编译好的 Universal 原生二进制写入应用包内（\`Contents/MacOS/ffmpeg\`）。
+- macOS 客户端（main.swift）通过原生进程接口直接调用内置的 FFmpeg 引擎，用户无需打开终端，无需安装 Homebrew。
 
-#### 3. GitHub Actions 自动化构建与 Releases 同步
-- 自动构建并发布 VideoCutie-1.1.1-Universal.dmg。
-- Releases 标题规范设定为：视频剪辑姬（Video Cutie）v1.1.1。`;
+#### 3. 重新设计应用图标（符合现代 macOS HIG 设计规范）
+- 消除四周黑边，采用完整精致的圆角矩形（macOS Squircle）。
+- 画面简洁细腻无文字字符，去除高光玻璃拟物杂质，纯净现代扁平风格。
+- 已同步生成 Retina 多分辨率 AppIcon.icns 与 Dock 高清图标。
+
+#### 4. 客户端界面全面极简精致化
+- 精简操作区，聚焦“拖入视频 → 设定时间（智能补全）→ 一键导出”，杜绝无关信息干扰。`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,14 +58,14 @@ export const GitHubActionsModal: React.FC = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold tracking-tight">
-                GitHub Actions 自动化 CI/CD 与 Releases 发布
+                GitHub Actions 自动化打包与 Releases 发布
               </h2>
               <span className="text-[11px] font-mono bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full border border-pink-500/30 font-semibold">
                 v{APP_INFO.version}
               </span>
             </div>
             <p className="text-xs text-neutral-300 mt-0.5">
-              代码推送到 GitHub 后可手动在 Actions 中一键打包 Universal DMG，并自动发布 Releases。
+              内置 FFmpeg 打包，代码推送到 GitHub 后可手动在 Actions 中一键打包 Universal DMG 并自动发布 Releases。
             </p>
           </div>
         </div>
@@ -79,18 +83,18 @@ export const GitHubActionsModal: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>下载 .github/workflows/build-dmg.yml</span>
+            <span>下载 build-dmg.yml</span>
           </button>
         </div>
       </div>
 
-      {/* Proactive Tip for Lockfile Resolution */}
-      <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200/80 dark:border-blue-800/80 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
-        <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+      {/* Proactive Tip for FFmpeg Bundling */}
+      <div className="p-3.5 bg-pink-50 dark:bg-pink-950/40 rounded-xl border border-pink-200/80 dark:border-pink-800/80 flex items-start gap-2.5 text-xs text-pink-900 dark:text-pink-200">
+        <ShieldCheck className="w-4 h-4 text-pink-500 shrink-0 mt-0.5" />
         <div className="flex flex-col gap-0.5">
-          <span className="font-semibold">已修复 setup-node 缺少 Lockfile 导致的 CI 中断</span>
-          <span className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
-            GitHub Actions 提示 <code>Dependencies lock file is not found</code> 是因为 <code>actions/setup-node</code> 开启了强制缓存。现已在工作流中解绑该强制依赖，并生成提交了标准 <code>package-lock.json</code>，确保在任何代码分支或全新拉取中均能 100% 顺畅构建并发布 DMG。
+          <span className="font-semibold">已集成 FFmpeg 自动化打包机制</span>
+          <span className="text-[11px] text-pink-700 dark:text-pink-300 leading-relaxed">
+            GitHub Actions 运行器会在 macOS 构建环境中预先拉取 FFmpeg 并注入到 <code>Contents/MacOS/ffmpeg</code>，使用户安装生成的 DMG 后立即可用，完全无需安装终端或第三方命令。
           </span>
         </div>
       </div>
@@ -121,7 +125,7 @@ export const GitHubActionsModal: React.FC = () => {
                 Latest Release
               </span>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">Tag: v1.1.1</span>
+            <span className="text-xs text-neutral-500 font-mono">Tag: v1.2.0</span>
           </div>
 
           <div className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed border-t border-neutral-200 dark:border-neutral-800 pt-3 flex flex-col gap-2">
@@ -142,74 +146,18 @@ export const GitHubActionsModal: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
                 <span className="font-mono font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                  VideoCutie-1.1.1-Universal.dmg
+                  VideoCutie-1.2.0-Universal.dmg
                 </span>
-                <span className="text-[11px] font-mono text-neutral-500 shrink-0">~85 MB</span>
+                <span className="text-[11px] font-mono text-neutral-500 shrink-0">内置 FFmpeg (~95 MB)</span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
                 <span className="font-mono font-medium text-neutral-800 dark:text-neutral-200 truncate">
-                  VideoCutie-1.1.1-macOS-Universal.zip
+                  VideoCutie-1.2.0-macOS-Universal.zip
                 </span>
-                <span className="text-[11px] font-mono text-neutral-500 shrink-0">~78 MB</span>
+                <span className="text-[11px] font-mono text-neutral-500 shrink-0">便携 Zip (~88 MB)</span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Step-by-Step Manual Trigger Guide */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-        <div className="p-4 bg-white dark:bg-neutral-850 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold">
-            <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xs">1</span>
-            <span>代码同步到 GitHub</span>
-          </div>
-          <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            将当前工作区代码推送至 GitHub 仓库（包含 <code className="bg-neutral-100 dark:bg-neutral-700 px-1 py-0.5 rounded font-mono">.github/workflows/build-dmg.yml</code> 与打包脚本）。
-          </p>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-neutral-850 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 font-semibold">
-            <span className="w-5 h-5 rounded-full bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center text-xs">2</span>
-            <span>手动触发 Actions 构建</span>
-          </div>
-          <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            打开仓库中的 <strong>Actions</strong> 标签页，在左侧选择对应工作流，点击右侧 <strong>「Run workflow」</strong> 输入版本号即可触发。
-          </p>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-neutral-850 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
-            <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-xs">3</span>
-            <span>自动在 Releases 发布</span>
-          </div>
-          <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            构建成功后，工作流自动创建以 <strong>视频剪辑姬（Video Cutie）v1.1</strong> 为标题的 Release，并附带优化汇报与 DMG 安装包。
-          </p>
-        </div>
-      </div>
-
-      {/* Full Workflow YAML Inspection View */}
-      <div className="p-4 bg-white dark:bg-neutral-850 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-neutral-500" />
-            <h4 className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
-              .github/workflows/build-dmg.yml 完整工作流配置
-            </h4>
-          </div>
-          <button
-            onClick={() => handleCopy(GITHUB_WORKFLOW_YAML, 'yaml')}
-            className="text-xs font-medium text-pink-600 dark:text-pink-400 hover:underline flex items-center gap-1"
-          >
-            {copiedType === 'yaml' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedType === 'yaml' ? '已复制全部配置' : '一键复制代码'}</span>
-          </button>
-        </div>
-
-        <div className="p-4 bg-neutral-950 text-neutral-200 rounded-lg font-mono text-xs overflow-x-auto border border-neutral-800 max-h-72 leading-relaxed">
-          <pre>{GITHUB_WORKFLOW_YAML}</pre>
         </div>
       </div>
     </div>

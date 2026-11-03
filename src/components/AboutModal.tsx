@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle2, GitBranch, Cpu, Sparkles } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
 import { APP_INFO } from '../utils/dmgGenerator';
 
 interface AboutModalProps {
@@ -35,7 +35,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         <div className="p-6 flex flex-col items-center text-center gap-4">
           <div className="relative">
             <img
-              src="/src/assets/images/video_cutie_icon_1793694252197.jpg"
+              src="/src/assets/app_icon.png"
               alt={APP_INFO.appNameZh}
               className="w-20 h-20 rounded-2xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
               referrerPolicy="no-referrer"
@@ -52,30 +52,22 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-xs">
-            专为 macOS 设计的原生视频极速无损裁剪客户端。支持拖拽导入、时间自动补全 (012536 → 01:25:36)、原画音视频流复制 (-c copy)、以及 GitHub Actions 自动化构建发布原生 Universal DMG。
+            专为 macOS 设计的原生视频极速无损裁剪客户端。内置 FFmpeg 原生引擎，支持拖拽导入、时间自动补全 (012536 → 01:25:36)、原画音视频流复制 (-c copy) 一键直接导出，彻底摆脱终端。
           </p>
 
           {/* Checklist of met requirements */}
           <div className="w-full bg-neutral-50 dark:bg-neutral-800/60 rounded-xl p-3 border border-neutral-100 dark:border-neutral-800 text-left text-xs space-y-1.5">
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>「视频剪辑姬（Video Cutie）v1.1.1」原生桌面客户端</span>
+              <span>「视频剪辑姬（Video Cutie）v1.2.0」</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>已适配标准 AppIcon.icns，Dock/Finder/切换器完整展示</span>
+              <span>已将 FFmpeg 打包进客户端，零终端命令</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>原生 Cocoa 客户端窗口，彻底告别浏览器与空白页</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>GitHub Actions 自动化构建 Universal .dmg 并发布 Releases</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>Releases 标题设定为：视频剪辑姬（Video Cutie）v1.1.1</span>
+              <span>重新设计现代 macOS 纯净圆角扁平图标 (无黑边、无字符)</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
@@ -83,17 +75,17 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>音视频流直接复制 (-c copy) 零画质损耗极速裁剪</span>
+              <span>音视频流直接复制 (-c copy) 零画质损耗极速导出</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>兼容苹果芯片 (M1~M4) 与 Intel 芯片 (x86_64)</span>
+              <span>GitHub Actions 自动化构建与 Releases 同步</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between w-full text-[11px] font-mono text-neutral-400 border-t border-neutral-100 dark:border-neutral-800 pt-3">
             <span>macOS 11.0+ (Big Sur ~ Sequoia)</span>
-            <span>arm64 / x86_64</span>
+            <span>内置 FFmpeg 核心</span>
           </div>
         </div>
       </div>
