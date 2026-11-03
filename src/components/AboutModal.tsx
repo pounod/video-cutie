@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, CheckCircle2, ShieldCheck, Cpu, HardDrive } from 'lucide-react';
+import { X, CheckCircle2, GitBranch, Cpu, Sparkles } from 'lucide-react';
 import { APP_INFO } from '../utils/dmgGenerator';
 
 interface AboutModalProps {
@@ -20,7 +20,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
             <span className="w-3 h-3 rounded-full bg-[#27C93F]" />
             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 ml-2">
-              关于 TrimCraft
+              关于 {APP_INFO.appNameZh}
             </span>
           </div>
           <button
@@ -35,8 +35,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         <div className="p-6 flex flex-col items-center text-center gap-4">
           <div className="relative">
             <img
-              src="/src/assets/images/macos_trimmer_icon_1793693181920.jpg"
-              alt="TrimCraft Icon"
+              src="/src/assets/images/video_cutie_icon_1793694252197.jpg"
+              alt={APP_INFO.appNameZh}
               className="w-20 h-20 rounded-2xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
               referrerPolicy="no-referrer"
             />
@@ -44,46 +44,46 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
 
           <div className="flex flex-col gap-0.5">
             <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
-              TrimCraft
+              {APP_INFO.appNameZh} <span className="text-neutral-500 font-normal">({APP_INFO.appNameEn})</span>
             </h2>
-            <p className="text-xs font-mono text-neutral-500">
-              版本 {APP_INFO.version} (Build 2026.11) · Universal
+            <p className="text-xs font-mono text-pink-600 dark:text-pink-400 font-bold">
+              版本 {APP_INFO.version} · Universal (arm64 + x86_64)
             </p>
           </div>
 
           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed max-w-xs">
-            专为 macOS 设计的视频极速无损裁剪工具。支持拖拽导入视频、时间自动补全 (012536 → 01:25:36)、原画音视频流复制 (-c copy) 以及通用 DMG 安装包。
+            专为 macOS 设计的视频极速无损裁剪工具。支持拖拽导入视频、时间自动补全 (012536 → 01:25:36)、原画音视频流复制 (-c copy)、以及 GitHub Actions 自动化构建发布 Universal DMG。
           </p>
 
           {/* Checklist of met requirements */}
           <div className="w-full bg-neutral-50 dark:bg-neutral-800/60 rounded-xl p-3 border border-neutral-100 dark:border-neutral-800 text-left text-xs space-y-1.5">
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>拖入视频自动提取分辨率、时长、码率等元数据</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>中文名「视频剪辑姬」，英文名「Video Cutie」v1.1</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>支持开始/结束时间输入，默认0与总时长</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>GitHub Actions 自动化构建 .dmg 并发布至 Releases</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>Releases 标题设定为：视频剪辑姬（Video Cutie）v1.1</span>
+            </div>
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>Releases 正文自动关联每次「优化完成汇报」</span>
+            </div>
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
               <span>输入 012536 自动补全为 01:25:36</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>采用音视频流复制 (-c:v copy -c:a copy) 零画质损耗</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>音视频流直接复制 (-c copy) 零画质损耗极速裁剪</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>适配 macOS 终端 FFmpeg 命令与脚本</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>现代扁平化应用图标设计</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>生成兼容 Apple Silicon 与 Intel 的 Universal DMG 安装包</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+              <span>兼容苹果芯片 (M1~M4) 与 Intel 芯片 (x86_64)</span>
             </div>
           </div>
 

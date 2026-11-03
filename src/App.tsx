@@ -6,26 +6,27 @@ import { TimeInputBox } from './components/TimeInputBox';
 import { VideoMetadataCard, VideoMetadata } from './components/VideoMetadataCard';
 import { TerminalPanel } from './components/TerminalPanel';
 import { DmgInstallerModal } from './components/DmgInstallerModal';
+import { GitHubActionsModal } from './components/GitHubActionsModal';
 import { TechSpecsModal } from './components/TechSpecsModal';
 import { AboutModal } from './components/AboutModal';
-import { formatSecondsToHHMMSS, parseHHMMSSToSeconds } from './utils/timeFormat';
+import { formatSecondsToHHMMSS } from './utils/timeFormat';
 import { TrimConfig, generateMacOSShellScript } from './utils/ffmpegHelper';
 import { downloadFile, APP_INFO } from './utils/dmgGenerator';
-import { Copy, Download, RefreshCw, Scissors, Terminal, Sparkles, Check, FileVideo, HardDrive } from 'lucide-react';
+import { Copy, Download, RefreshCw, Scissors, Terminal, Check, FileVideo, HardDrive, GitBranch } from 'lucide-react';
 
 export default function App() {
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('trimcraft_theme');
+      const saved = localStorage.getItem('videocutie_theme');
       if (saved) return saved === 'dark';
-      return true; // Default to dark mode for professional video editing
+      return true; // Default to dark mode for macOS media editing
     }
     return true;
   });
 
-  // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<'trimmer' | 'terminal' | 'dmg' | 'specs'>('trimmer');
+  // Active Navigation Tab: trimmer | terminal | dmg | actions | specs
+  const [activeTab, setActiveTab] = useState<'trimmer' | 'terminal' | 'dmg' | 'actions' | 'specs'>('trimmer');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   // Video State
@@ -54,10 +55,10 @@ export default function App() {
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('trimcraft_theme', 'dark');
+      localStorage.setItem('videocutie_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('trimcraft_theme', 'light');
+      localStorage.setItem('videocutie_theme', 'light');
     }
   }, [isDarkMode]);
 
@@ -144,7 +145,6 @@ export default function App() {
   const handleStartTimeChange = (newStr: string, newSec: number) => {
     setStartTimeStr(newStr);
     setStartSeconds(newSec);
-    // Ensure end is not smaller than start
     if (newSec > endSeconds && metadata) {
       setEndSeconds(metadata.duration);
       setEndTimeStr(formatSecondsToHHMMSS(metadata.duration));
@@ -156,7 +156,6 @@ export default function App() {
   const handleEndTimeChange = (newStr: string, newSec: number) => {
     setEndTimeStr(newStr);
     setEndSeconds(newSec);
-    // Ensure start is not greater than end
     if (newSec < startSeconds) {
       setStartSeconds(0);
       setStartTimeStr('00:00:00');
@@ -207,7 +206,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans transition-colors selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans transition-colors selection:bg-pink-500 selection:text-white">
       {/* macOS Window Frame & Titlebar */}
       <MacTitleBar
         activeTab={activeTab}
@@ -229,33 +228,46 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 bg-white/70 dark:bg-neutral-900/60 p-6 rounded-2xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
                   <div className="flex items-center gap-4">
                     <img
-                      src="/src/assets/images/macos_trimmer_icon_1793693181920.jpg"
-                      alt="TrimCraft App Icon"
+                      src="/src/assets/images/video_cutie_icon_1793694252197.jpg"
+                      alt="视频剪辑姬 App Icon"
                       className="w-16 h-16 rounded-2xl shadow-md ring-1 ring-black/10 dark:ring-white/10"
                       referrerPolicy="no-referrer"
                     />
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
                         <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                          TrimCraft 1.0
+                          {APP_INFO.appNameZh} <span className="font-normal text-sm text-neutral-500">({APP_INFO.appNameEn})</span>
                         </h1>
+                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-sm bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border border-pink-200/60 dark:border-pink-800/60">
+                          v{APP_INFO.version}
+                        </span>
                         <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-sm bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60">
-                          macOS Universal
+                          Universal
                         </span>
                       </div>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        视频音视频流复制无损裁剪 · 零重编码 · 智能时间格式补全 (012536 → 01:25:36)
+                        视频音视频流复制无损裁剪 · 零重编码 · 智能时间格式补全 (012536 → 01:25:36) · GitHub Actions 自动发布
                       </p>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setActiveTab('dmg')}
-                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-xl transition-colors shrink-0 shadow-xs"
-                  >
-                    <HardDrive className="w-4 h-4 text-amber-500" />
-                    <span>获取 macOS .dmg 安装包</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setActiveTab('actions')}
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-pink-600 hover:bg-pink-500 rounded-xl transition-colors shadow-xs"
+                    >
+                      <GitBranch className="w-4 h-4" />
+                      <span>GitHub Actions 构建发布</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('dmg')}
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-xl transition-colors shadow-xs"
+                    >
+                      <HardDrive className="w-4 h-4 text-amber-500" />
+                      <span>.DMG 安装包</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Drop Zone with sample video presets */}
@@ -267,7 +279,7 @@ export default function App() {
                 {/* Top Video Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-neutral-900/80 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                    <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400">
                       <FileVideo className="w-4 h-4" />
                     </div>
                     <div className="flex flex-col min-w-0">
@@ -367,7 +379,7 @@ export default function App() {
 
                     <button
                       onClick={handleDownloadShellScript}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>下载极速执行脚本 (.sh)</span>
@@ -410,10 +422,15 @@ export default function App() {
 
         {/* TAB 3: MACOS UNIVERSAL DMG INSTALLER CENTER */}
         {activeTab === 'dmg' && (
-          <DmgInstallerModal />
+          <DmgInstallerModal onGoToActions={() => setActiveTab('actions')} />
         )}
 
-        {/* TAB 4: TECHNICAL SPECS & STREAM COPY */}
+        {/* TAB 4: GITHUB ACTIONS CI/CD & RELEASES HUB */}
+        {activeTab === 'actions' && (
+          <GitHubActionsModal />
+        )}
+
+        {/* TAB 5: TECHNICAL SPECS & STREAM COPY */}
         {activeTab === 'specs' && (
           <TechSpecsModal />
         )}
@@ -422,7 +439,8 @@ export default function App() {
       {/* Quiet macOS Footer */}
       <footer className="mt-auto px-4 py-3 border-t border-neutral-200/80 dark:border-neutral-800/80 bg-neutral-100/60 dark:bg-neutral-900/60 text-center text-xs text-neutral-500 dark:text-neutral-400 flex flex-wrap items-center justify-between gap-3 max-w-6xl w-full mx-auto">
         <div className="flex items-center gap-2">
-          <span>TrimCraft {APP_INFO.version} (Universal macOS)</span>
+          <span className="font-semibold text-neutral-800 dark:text-neutral-200">{APP_INFO.appNameZh} ({APP_INFO.appNameEn})</span>
+          <span>v{APP_INFO.version}</span>
           <span>·</span>
           <span>Apple Silicon (M1~M4) & Intel x86_64</span>
         </div>
@@ -436,6 +454,9 @@ export default function App() {
           </button>
           <button onClick={() => setActiveTab('dmg')} className="hover:text-neutral-900 dark:hover:text-white transition-colors">
             DMG 安装包
+          </button>
+          <button onClick={() => setActiveTab('actions')} className="hover:text-neutral-900 dark:hover:text-white transition-colors">
+            GitHub Actions 发布
           </button>
           <button onClick={() => setActiveTab('specs')} className="hover:text-neutral-900 dark:hover:text-white transition-colors">
             技术规范
