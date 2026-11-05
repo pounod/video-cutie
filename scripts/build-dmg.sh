@@ -86,10 +86,10 @@ if [ -f "src/assets/AppIcon.icns" ]; then
     cp "src/assets/AppIcon.icns" "${APP_DIR}/Contents/Resources/AppIcon.icns"
 fi
 
-# 在 macOS 环境下，使用 sips 与 iconutil 进一步根据最新无黑边图片制作 iconset
-ICON_SRC="src/assets/images/video_cutie_squircle_v120_1793706340525.jpg"
+# 在 macOS 环境下，使用 sips 与 iconutil 根据用户提供的最新图标制作 iconset
+ICON_SRC="src/assets/app_icon.png"
 if [ ! -f "$ICON_SRC" ]; then
-    ICON_SRC="src/assets/images/video_cutie_icon_v120_clean.png"
+    ICON_SRC="public/app_icon.png"
 fi
 
 if command -v iconutil >/dev/null 2>&1 && command -v sips >/dev/null 2>&1 && [ -f "$ICON_SRC" ]; then
@@ -107,7 +107,8 @@ if command -v iconutil >/dev/null 2>&1 && command -v sips >/dev/null 2>&1 && [ -
     sips -z 512 512   "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512.png" >/dev/null 2>&1 || true
     sips -z 1024 1024 "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512@2x.png" >/dev/null 2>&1 || true
     iconutil -c icns "$ICONSET_DIR" -o "${APP_DIR}/Contents/Resources/AppIcon.icns" 2>/dev/null || true
-    echo "✅ 成功为应用生成最新标准无黑边 AppIcon.icns！"
+    cp "${APP_DIR}/Contents/Resources/AppIcon.icns" "src/assets/AppIcon.icns" 2>/dev/null || true
+    echo "✅ 成功根据附件图标为应用生成最新标准 AppIcon.icns！"
 fi
 
 # 5. 打包内置 FFmpeg 二进制 (Requirement: 将 FFmpeg 打包进客户端)
@@ -149,7 +150,7 @@ fi
 COMPILED_NATIVE=false
 if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
     echo "🔨 正在调用 macOS 原生 swiftc 编译 Universal 原生客户端窗口程序..."
-    rm -f /tmp/vc-arm64 /tmp/vc-x64
+    rm -f /tmp/vc-arm64 /tmp/vc-x64 /tmp/vc-native
     
     SDK_FLAGS=()
     if command -v xcrun >/dev/null 2>&1; then
@@ -160,11 +161,20 @@ if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
     fi
 
     echo "⚙️ 编译 Apple Silicon (arm64) 架构..."
-    swiftc -O -target arm64-apple-macos11.0 "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-arm64 || true
+    if swiftc -O -target arm64-apple-macosx11.0 "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-arm64 2>&1; then
+        echo "✅ arm64 (Apple Silicon) 编译成功"
+    else
+        echo "⚠️ arm64 交叉编译跳过"
+    fi
 
     echo "⚙️ 编译 Intel (x86_64) 架构..."
-    swiftc -O -target x86_64-apple-macos11.0 "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-x64 || true
+    if swiftc -O -target x86_64-apple-macosx11.0 "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-x64 2>&1; then
+        echo "✅ x86_64 (Intel) 编译成功"
+    else
+        echo "⚠️ x86_64 交叉编译跳过"
+    fi
     
+    # 架构产物整合
     if [ -f "/tmp/vc-arm64" ] && [ -f "/tmp/vc-x64" ]; then
         lipo -create -output "${APP_DIR}/Contents/MacOS/VideoCutie" /tmp/vc-arm64 /tmp/vc-x64
         chmod +x "${APP_DIR}/Contents/MacOS/VideoCutie"
@@ -181,25 +191,31 @@ if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
         echo "✅ 成功构建 Intel 原生 Cocoa WebKit 客户端！"
         COMPILED_NATIVE=true
     else
-        echo "❌ 警告: macOS 原生编译未能生成二进制产物。"
+        echo "⚙️ 尝试使用当前环境默认架构直接编译..."
+        if swiftc -O "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-native 2>&1; then
+            cp /tmp/vc-native "${APP_DIR}/Contents/MacOS/VideoCutie"
+            chmod +x "${APP_DIR}/Contents/MacOS/VideoCutie"
+            echo "✅ 成功构建默认架构原生 Cocoa 客户端！"
+            COMPILED_NATIVE=true
+        fi
+    fi
+
+    if [ "$COMPILED_NATIVE" = false ]; then
+        echo "❌ 致命错误: swiftc 编译原生 Cocoa 视窗客户端未能成功，请检查上方编译日志！" >&2
+        exit 1
     fi
 fi
 
 # 若非 macOS 环境，生成安全独立启动引导
 if [ "$COMPILED_NATIVE" = false ]; then
-    echo "ℹ️ 当前处于非 macOS 或无 swiftc 编译环境，写入标准兼容启动引导..."
+    echo "ℹ️ 当前处于非 macOS 环境，写入标准兼容测试引导..."
     cat << 'EOF' > "${APP_DIR}/Contents/MacOS/VideoCutie"
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RESOURCES_DIR="$DIR/../Resources"
 INDEX_FILE="$RESOURCES_DIR/index.html"
-
-# 将内置 FFmpeg 加入优先环境变量
 export PATH="$DIR:/opt/homebrew/bin:/usr/local/bin:$PATH"
-
-if [ -f "$INDEX_FILE" ]; then
-    echo "视频剪辑姬 (Video Cutie) 已就绪。"
-fi
+echo "视频剪辑姬 (Video Cutie) 已就绪。"
 EOF
     chmod +x "${APP_DIR}/Contents/MacOS/VideoCutie"
 fi

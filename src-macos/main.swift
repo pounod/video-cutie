@@ -75,8 +75,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
 
         let config = WKWebViewConfiguration()
         config.userContentController = userContentController
-        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        config.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+        let webpagePreferences = WKWebpagePreferences()
+        webpagePreferences.allowsContentJavaScript = true
+        config.defaultWebpagePreferences = webpagePreferences
 
         webView = WKWebView(frame: window.contentView!.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
@@ -97,7 +98,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         if !loaded {
             let localURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("dist/index.html")
             if FileManager.default.fileExists(atPath: localURL.path) {
-                webView.loadFileURL(localURL, allowingReadAccessTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+                let accessDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                webView.loadFileURL(localURL, allowingReadAccessTo: accessDir)
                 loaded = true
             }
         }
@@ -378,6 +380,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
 // 启动 Cocoa 原生主运行循环
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
-let delegate = AppDelegate()
-app.delegate = delegate
-app.run()
+let strongDelegate = AppDelegate()
+app.delegate = strongDelegate
+withExtendedLifetime(strongDelegate) {
+    app.run()
+}

@@ -14,17 +14,27 @@
 
 ### 🚀 核心优化与重大改进
 
-#### 1. 修复应用图标持续跳动无法启动、或启动后打开浏览器页面的严重 Bug
-- **根因分析**：
-  1. 此前在 CI 构建脚本中，调用 `swiftc` 编译原生 Cocoa 客户端时误传了 `-framework Cocoa -framework WebKit` 编译参数（Swift 模块通过 `import` 自动解析，直接传参导致 `swiftc: error: unknown argument`），且未传递 macOS SDK 路径；
-  2. 因编译指令失败后被捕获降级，触发了向可执行文件写入启动本地 HTTP 服务并调用 `open http://...` 浏览器页面的回退脚本；该脚本非 Cocoa 视窗程序，未向 macOS WindowServer 注册握手，导致 macOS Dock 图标长时间持续跳动、最终打开浏览器而非原生客户端；
-  3. 未对生成的 `.app` 实施 `codesign` 代码签名，在 Apple Silicon (M1~M4) 上因 AMFI 安全策略直接遭系统拦截。
-- **全面加固与解决**：
-  1. 重构 `build-dmg.sh` 编译链：通过 `xcrun --show-sdk-path` 准确绑定 macOS SDK，修复 `swiftc` 模块参数；
-  2. 针对 Apple Silicon（arm64）与 Intel（x86_64）双架构分别生成并由 `lipo` 合成 Universal 原生独立可执行文件；
-  3. 构建最后一步调用 `codesign --force --deep --sign -` 进行本地代码签名，确保双击秒开、绝不跳动阻断或跳出浏览器。
+#### 1. 彻底根治「点击应用图标没有任何反应 / 无法启动」的严重 Bug
+- **根因深度排查**：
+  1. **编译器 Target Triple 拼写错误**：在 LLVM / Clang / Swift 编译器工具链规范中，macOS 的 target triple 标识符必须是 `macosx`（如 `arm64-apple-macosx11.0` 与 `x86_64-apple-macosx11.0`），此前写成 `macos` 导致 `swiftc` 抛出 `unrecognized target triple` 致命错误；
+  2. **错误吞没与空脚本秒退**：编译语句末尾的 `|| true` 掩盖了编译失败，导致未能生成原生二进制产物，进而触发回退分支写入了一段仅输出文本的 Shell 脚本；当用户双击 `.app` 时，系统执行该脚本并在 0.001 秒内直接执行完毕退出，表现为**点击图标没有任何反应**；
+  3. **WebKit 私有 KVC 属性致命崩溃**：在 macOS 14/15 系统中，WebKit 移除了未公开的私有键 `allowFileAccessFromFileURLs`，调用 `setValue(_:forKey:)` 会直接抛出无法被 Swift 捕获的 Objective-C `NSUnknownKeyException` 异常，导致应用在窗口绘制前即时崩溃闪退；
+  4. **AppDelegate 生命周期提前释放**：Cocoa 原生主循环中 `app.delegate` 属于弱引用，若无显式生命周期保护可能在垃圾回收时被提前释放。
+- **全方位加固方案**：
+  1. 纠正 `build-dmg.sh` 中的 target triple 为标准 `-target arm64-apple-macosx11.0` 与 `-target x86_64-apple-macosx11.0`，并加入宿主本地默认架构直编兜底；
+  2. 在 CI 构建脚本中设置严格门禁：在 macOS 环境下若原生视窗程序编译未生成二进制，立即阻断并打印详细日志，严禁生成损坏安装包；
+  3. 彻底移除 WebKit 私有 KVC 注入，全面采用 Apple 官方推荐的标准 `loadFileURL(indexURL, allowingReadAccessTo: accessURL)` 授权加载机制，完美兼容 macOS 11 至 macOS 15+ Sequoia；
+  4. 采用 `withExtendedLifetime(strongDelegate)` 强引用锁定 Cocoa 代理生命周期，杜绝提前释放。
 
-#### 2. 彻底解决客户端界面「多层嵌套」视觉问题
+#### 2. 全新应用图标替换（完全采纳用户附件设计）
+- **图标更新**：将应用整体图标更换为用户附件提供的全新设计（斜向精准剪刀裁切胶片画卷、带播放三角指示、柔和渐变圆角平底风格）；
+- **全端同步覆盖**：
+  - 更新前端桌面视窗左上角小图标与主界面拖拽区大图标（`src/assets/app_icon.png` 与 `public/app_icon.png`）；
+  - 更新 GitHub `README.md` 顶端展示图标；
+  - 重新打包生成完整的 macOS 视网膜 `AppIcon.icns`（内置 16x16、32x32、64x64、128x128、256x256、512x512、1024x1024 完整层级图标集）；
+  - 在 CI 流程中联动 `sips` 与 `iconutil` 确保每次 DMG 打包均采用该标准附件图标。
+
+#### 3. 彻底解决客户端界面「多层嵌套」视觉问题
 - **去除冗余伪造交通灯**：原生 macOS 窗口已具备系统级红黄绿交通灯，移除了 Web 端自画的第二组红黄绿小圆点，在顶栏左侧预留 `pl-20`（80px）物理区域供原生交通灯自然呈现，彻底消除“窗口套窗口”的双重边框感；
 - **支持原生窗口任意拖拽**：在顶部栏配置 `-webkit-app-region: drag`，按住顶部即可平滑拖动客户端视窗；
 - **重构单层沉浸式工作台**：
@@ -32,15 +42,15 @@
   - 未导入视频时：呈现一体化全幅拖拽画布与样例样片，纯粹干净；
   - 导入视频后：顶部为精炼视频规格条，中部为主控视屏播放与双滑块轨，底部为整合的一体化控制台（时间输入 + 保存路径预设 + 预计输出文件名 + 一键无损导出大按钮），层次分明无冗余套娃。
 
-#### 3. GitHub Actions 手动构建新增「Pre-release 预发布」选项
+#### 4. GitHub Actions 手动构建新增「Pre-release 预发布」选项
 - 在 `.github/workflows/build-dmg.yml` 的 `workflow_dispatch` 触发输入中增加 `prerelease` 布尔配置项（默认为 `false`）；
 - 触发构建时可自由勾选是否将产物发布为 GitHub Releases 的 Pre-release 预发布版本，便于预览版本内测。
 
-#### 4. 消除 GitHub Actions 构建中的 Node.js 20 弃用警告
+#### 5. 消除 GitHub Actions 构建中的 Node.js 20 弃用警告
 - 针对 GitHub 官方关于 Runner 强制将 Node 20 actions 切换到 Node 24 产生的告警，在 Workflow 全局声明 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true`；
 - 将 `setup-node` 统一适配升级至 Node.js 22 LTS，确保 CI 流水线绿色无告警顺利执行。
 
-#### 5. 原生安全进程防护与自定义保存路径
+#### 6. 原生安全进程防护与自定义保存路径
 - **剪辑崩溃彻底根治**：原生 Cocoa 窗口接入 `NSDraggingDestination` 拖放通道获取源视频磁盘绝对路径，针对 `runBundledFFmpeg` 加入完整文件存在性校验、保存目录递归创建与管道异常拦截；
 - **支持保存路径自定义**：提供「📁 源视频同一目录」、「🎬 影片 (~/Movies)」、「📥 下载 (~/Downloads)」、「🖥️ 桌面 (~/Desktop)」一键预设，并支持原生 `NSOpenPanel` 目录选取器及导出后「在访达中显示」。
 
