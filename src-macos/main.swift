@@ -4,10 +4,12 @@ import UniformTypeIdentifiers
 
 /**
  * 视频剪辑姬（Video Cutie）v1.2.0 - macOS 原生客户端主入口
- * 使用 Apple 原生 Cocoa + WebKit (WKWebView) 渲染桌面客户端界面
- * 拥有完整的 macOS 原生窗口、交通灯信号、Dock 图标及本地离线资源支持
- * 内置 FFmpeg 二进制支持 (Contents/MacOS/ffmpeg)，免任何外部终端命令
- * 全面强化：原生文件/目录选择器、原生拖拽识别、安全进程防护杜绝崩溃
+ * 架构: Universal Binary (Apple Silicon arm64 + Intel x86_64)
+ * 特性:
+ *  - 原生 Cocoa 窗口 + WebKit WKWebView 独立客户端界面 (无浏览器依赖、无多层嵌套)
+ *  - 内置 FFmpeg 二进制 (Contents/MacOS/ffmpeg) 毫秒级原画音视频流无损裁剪
+ *  - 原生菜单栏 (Cmd+Q 退出, Cmd+W 关闭, Cmd+C 复制, Cmd+V 粘贴)
+ *  - 原生文件拖拽、原生文件打开对话框、原生保存目录选择与访达定位
  */
 
 class MainWindow: NSWindow {
@@ -40,19 +42,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
     var webView: WKWebView!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let app = NSApplication.shared
-        app.setActivationPolicy(.regular)
+        // 1. 设置标准应用菜单栏 (确保 Cmd+Q 退出、Cmd+W 关闭、Cmd+C/V 剪切板正常工作)
+        setupMainMenu()
 
-        // 1. 计算居中窗口尺寸
+        // 2. 计算居中窗口尺寸 (1160x780)
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
-        let windowWidth: CGFloat = 1140
+        let windowWidth: CGFloat = 1160
         let windowHeight: CGFloat = 780
-        let windowX = (screenRect.width - windowWidth) / 2 + screenRect.origin.x
-        let windowY = (screenRect.height - windowHeight) / 2 + screenRect.origin.y
+        let windowX = max(0, (screenRect.width - windowWidth) / 2 + screenRect.origin.x)
+        let windowY = max(0, (screenRect.height - windowHeight) / 2 + screenRect.origin.y)
 
         let windowRect = NSRect(x: windowX, y: windowY, width: windowWidth, height: windowHeight)
-        
-        // 2. 创建现代 macOS 窗口 (支持圆角与原生全尺寸视图)
+
+        // 3. 创建现代 macOS 原生窗口
         window = MainWindow(
             contentRect: windowRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -60,15 +62,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             defer: false
         )
         window.bridgeDelegate = self
-
         window.title = "视频剪辑姬 (Video Cutie)"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.minSize = NSSize(width: 880, height: 600)
+        window.minSize = NSSize(width: 860, height: 580)
         window.isReleasedWhenClosed = false
         window.delegate = self
 
-        // 3. 配置 WebKit 离线资源加载与本地文件权限
+        // 4. 配置 WebKit 离线资源加载与本地通信桥
         let userContentController = WKUserContentController()
         userContentController.add(self, name: "nativeBridge")
 
@@ -81,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         webView.autoresizingMask = [.width, .height]
         window.contentView?.addSubview(webView)
 
-        // 4. 定位并加载本地 Contents/Resources/index.html 客户端界面
+        // 5. 定位并加载 App Bundle 内的 Resources/index.html
         var loaded = false
         if let resourcePath = Bundle.main.resourcePath {
             let indexURL = URL(fileURLWithPath: resourcePath).appendingPathComponent("index.html")
@@ -92,32 +93,73 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             }
         }
 
-        // 兜底回退：若未找到打包资源，则尝试加载同级或本地静态服务
+        // 兜底回退：若在当前目录或同级开发目录运行
         if !loaded {
-            let localURL = URL(fileURLWithPath: "./index.html")
+            let localURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("dist/index.html")
             if FileManager.default.fileExists(atPath: localURL.path) {
-                webView.loadFileURL(localURL, allowingReadAccessTo: URL(fileURLWithPath: "."))
-            } else {
-                let html = """
-                <html>
-                <body style="background:#171717;color:#fff;font-family:-apple-system;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-                    <div style="text-align:center;">
-                        <h2>🌸 视频剪辑姬 (Video Cutie) v1.2.0</h2>
-                        <p style="color:#aaa;">客户端资源加载中...</p>
-                    </div>
-                </body>
-                </html>
-                """
-                webView.loadHTMLString(html, baseURL: nil)
+                webView.loadFileURL(localURL, allowingReadAccessTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+                loaded = true
             }
         }
 
-        // 5. 显示并聚焦窗口
+        // 6. 显示并聚焦原生客户端窗口
         window.makeKeyAndOrderFront(nil)
-        app.activate(ignoringOtherApps: true)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
-    // 原生处理拖入视频文件
+    // 快捷菜单栏
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        // App Menu
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu(title: "视频剪辑姬")
+        appMenu.addItem(withTitle: "关于 视频剪辑姬", action: #selector(showAbout), keyEquivalent: "")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "隐藏 视频剪辑姬", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = NSMenuItem(title: "隐藏其他", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(hideOthers)
+        appMenu.addItem(withTitle: "显示全部", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "退出 视频剪辑姬", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        // Edit Menu (用于输入框复制、剪切、粘贴、撤销、全选)
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "编辑")
+        editMenu.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
+        let redoItem = NSMenuItem(title: "重做", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(redoItem)
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "复制", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
+        // Window Menu
+        let windowMenuItem = NSMenuItem()
+        let windowMenu = NSMenu(title: "窗口")
+        windowMenu.addItem(withTitle: "最小化", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "缩放", action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
+        windowMenu.addItem(NSMenuItem.separator())
+        windowMenu.addItem(withTitle: "关闭窗口", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    @objc func showAbout() {
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.onOpenAboutModal && window.onOpenAboutModal();", completionHandler: nil)
+        }
+    }
+
+    // 处理拖拽或打开的视频文件
     func handleFileDropped(url: URL) {
         let path = url.path
         let name = url.lastPathComponent
@@ -132,82 +174,74 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         }
     }
 
-    // 处理来自 WebKit 前端的原生桥接消息
+    // 接收前端桥接消息
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        if message.name == "nativeBridge", let body = message.body as? [String: Any] {
-            let action = body["action"] as? String ?? ""
-            
-            // 1. 原生执行无损剪辑
-            if action == "executeTrim" {
-                let inputPath = body["input"] as? String ?? ""
-                let outputPath = body["output"] as? String ?? ""
-                let start = body["start"] as? String ?? "00:00:00"
-                let end = body["end"] as? String ?? ""
-                
-                DispatchQueue.global(qos: .userInitiated).async {
-                    self.runBundledFFmpeg(input: inputPath, output: outputPath, start: start, end: end)
+        guard message.name == "nativeBridge", let body = message.body as? [String: Any] else { return }
+        let action = body["action"] as? String ?? ""
+
+        switch action {
+        case "executeTrim":
+            let inputPath = body["input"] as? String ?? ""
+            let outputPath = body["output"] as? String ?? ""
+            let start = body["start"] as? String ?? "00:00:00"
+            let end = body["end"] as? String ?? ""
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.runBundledFFmpeg(input: inputPath, output: outputPath, start: start, end: end)
+            }
+
+        case "selectVideoFile":
+            DispatchQueue.main.async {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = true
+                panel.canChooseDirectories = false
+                panel.allowsMultipleSelection = false
+                panel.title = "选择需要裁剪的视频文件"
+                panel.prompt = "打开视频"
+                if #available(macOS 11.0, *) {
+                    panel.allowedContentTypes = [UTType.movie, UTType.video, UTType.quickTimeMovie, UTType.mpeg4Movie]
+                }
+                if panel.runModal() == .OK, let url = panel.url {
+                    self.handleFileDropped(url: url)
                 }
             }
-            
-            // 2. 原生选择视频文件弹窗
-            else if action == "selectVideoFile" {
-                DispatchQueue.main.async {
-                    let panel = NSOpenPanel()
-                    panel.canChooseFiles = true
-                    panel.canChooseDirectories = false
-                    panel.allowsMultipleSelection = false
-                    panel.title = "选择需要裁剪的视频文件"
-                    panel.prompt = "打开视频"
-                    if #available(macOS 11.0, *) {
-                        panel.allowedContentTypes = [
-                            UTType.movie, UTType.video, UTType.quickTimeMovie, UTType.mpeg4Movie
-                        ]
-                    }
-                    if panel.runModal() == .OK, let url = panel.url {
-                        self.handleFileDropped(url: url)
-                    }
+
+        case "selectSaveDirectory":
+            DispatchQueue.main.async {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = false
+                panel.canChooseDirectories = true
+                panel.canCreateDirectories = true
+                panel.allowsMultipleSelection = false
+                panel.title = "选择视频剪辑保存路径"
+                panel.prompt = "选择目录"
+                if panel.runModal() == .OK, let url = panel.url {
+                    let path = url.path
+                    let escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+                    self.webView.evaluateJavaScript("window.onSaveDirectorySelected && window.onSaveDirectorySelected(\"\(escapedPath)\");", completionHandler: nil)
                 }
             }
-            
-            // 3. 原生选择剪辑保存目录弹窗
-            else if action == "selectSaveDirectory" {
-                DispatchQueue.main.async {
-                    let panel = NSOpenPanel()
-                    panel.canChooseFiles = false
-                    panel.canChooseDirectories = true
-                    panel.canCreateDirectories = true
-                    panel.allowsMultipleSelection = false
-                    panel.title = "选择视频剪辑保存路径"
-                    panel.prompt = "选择目录"
-                    if panel.runModal() == .OK, let url = panel.url {
-                        let path = url.path
-                        let escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-                        self.webView.evaluateJavaScript("window.onSaveDirectorySelected && window.onSaveDirectorySelected(\"\(escapedPath)\");", completionHandler: nil)
-                    }
-                }
+
+        case "getDefaultPaths":
+            let userHome = FileManager.default.homeDirectoryForCurrentUser.path
+            let moviesDir = (userHome as NSString).appendingPathComponent("Movies")
+            let downloadsDir = (userHome as NSString).appendingPathComponent("Downloads")
+            let desktopDir = (userHome as NSString).appendingPathComponent("Desktop")
+
+            let json = "{\"movies\":\"\(moviesDir)\", \"downloads\":\"\(downloadsDir)\", \"desktop\":\"\(desktopDir)\"}"
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript("window.onDefaultPathsReceived && window.onDefaultPathsReceived(\(json));", completionHandler: nil)
             }
-            
-            // 4. 获取默认系统保存路径 (Movies / Downloads / Desktop)
-            else if action == "getDefaultPaths" {
-                let userHome = FileManager.default.homeDirectoryForCurrentUser.path
-                let moviesDir = (userHome as NSString).appendingPathComponent("Movies")
-                let downloadsDir = (userHome as NSString).appendingPathComponent("Downloads")
-                let desktopDir = (userHome as NSString).appendingPathComponent("Desktop")
-                
-                let json = "{\"movies\":\"\(moviesDir)\", \"downloads\":\"\(downloadsDir)\", \"desktop\":\"\(desktopDir)\"}"
-                DispatchQueue.main.async {
-                    self.webView.evaluateJavaScript("window.onDefaultPathsReceived && window.onDefaultPathsReceived(\(json));", completionHandler: nil)
-                }
+
+        case "revealInFinder":
+            let filePath = body["path"] as? String ?? ""
+            if !filePath.isEmpty {
+                let url = URL(fileURLWithPath: filePath)
+                NSWorkspace.shared.activateFileViewerSelecting([url])
             }
-            
-            // 5. 在访达中定位已导出的视频文件
-            else if action == "revealInFinder" {
-                let filePath = body["path"] as? String ?? ""
-                if !filePath.isEmpty {
-                    let url = URL(fileURLWithPath: filePath)
-                    NSWorkspace.shared.activateFileViewerSelecting([url])
-                }
-            }
+
+        default:
+            break
         }
     }
 
@@ -218,20 +252,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         self.webView.evaluateJavaScript("window.onNativeTrimComplete && window.onNativeTrimComplete(false, \"\", \"\(escaped)\");", completionHandler: nil)
     }
 
-    // 运行客户端内置的 FFmpeg 引擎并进行严格的异常与路径防护，杜绝崩溃
+    // 运行客户端内置 FFmpeg 引擎并进行严格路径与安全防护，杜绝崩溃
     private func runBundledFFmpeg(input: String, output: String, start: String, end: String) {
-        // 1. 规范化并检查输出路径，防止相对路径写入 root 导致的系统权限拒绝
         var finalOutput = output
         let userHome = FileManager.default.homeDirectoryForCurrentUser.path
         let defaultSaveDir = (userHome as NSString).appendingPathComponent("Movies")
-        
+
         if finalOutput.isEmpty {
             finalOutput = (defaultSaveDir as NSString).appendingPathComponent("video_trimmed.mp4")
         } else if !finalOutput.hasPrefix("/") {
             finalOutput = (defaultSaveDir as NSString).appendingPathComponent(finalOutput)
         }
 
-        // 2. 严格检查源视频文件是否存在
+        // 严格检查源视频文件是否存在
         if !FileManager.default.fileExists(atPath: input) {
             let msg = "未找到视频源文件: \(input)。请检查源文件是否存在或重新选择。"
             DispatchQueue.main.async {
@@ -240,7 +273,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             return
         }
 
-        // 3. 确保输出目录存在，若不存在则递归创建
+        // 递归创建输出目录
         let outputDir = URL(fileURLWithPath: finalOutput).deletingLastPathComponent().path
         if !FileManager.default.fileExists(atPath: outputDir) {
             do {
@@ -254,7 +287,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             }
         }
 
-        // 4. 定位 App Bundle 内置或系统的 FFmpeg
+        // 定位 App Bundle 内置或系统的 FFmpeg
         var ffmpegPath: String? = nil
         let candidatePaths = [
             Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/ffmpeg").path,
@@ -277,7 +310,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             return
         }
 
-        // 5. 构建 Process 进程
         let task = Process()
         task.executableURL = URL(fileURLWithPath: binPath)
         task.currentDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -317,7 +349,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             let exitCode = task.terminationStatus
             let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
             let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
-            
+
             DispatchQueue.main.async {
                 if exitCode == 0 {
                     let escapedOut = finalOutput.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
@@ -334,8 +366,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            window?.makeKeyAndOrderFront(nil)
+        }
+        return true
+    }
 }
 
+// 启动 Cocoa 原生主运行循环
+let app = NSApplication.shared
+app.setActivationPolicy(.regular)
 let delegate = AppDelegate()
-NSApplication.shared.delegate = delegate
-NSApplication.shared.run()
+app.delegate = delegate
+app.run()

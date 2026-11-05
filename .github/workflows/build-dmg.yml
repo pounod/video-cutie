@@ -16,12 +16,21 @@ on:
         required: true
         type: boolean
         default: true
+      prerelease:
+        description: '是否发布为 Pre-release 预发布版本'
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
 
 permissions:
   contents: write
+
+# 消除 GitHub Actions Node 20 弃用告警，锁定兼容 JavaScript 运行环境
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
 
 jobs:
   build-macos-dmg:
@@ -34,7 +43,7 @@ jobs:
       - name: 安装 Node.js 运行时
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: 安装项目依赖 (配置 macOS 原生环境)
         run: |
@@ -85,7 +94,7 @@ jobs:
           tag_name: "v${{ github.event.inputs.version || '1.2.0' }}"
           body_path: ${{ steps.release_notes.outputs.notes_file }}
           draft: false
-          prerelease: false
+          prerelease: ${{ github.event.inputs.prerelease == true || github.event.inputs.prerelease == 'true' }}
           files: |
             dist-dmg/*.dmg
             dist-dmg/*.zip

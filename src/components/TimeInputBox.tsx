@@ -84,7 +84,7 @@ export const TimeInputBox: React.FC<TimeInputBoxProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 p-3.5 bg-white dark:bg-neutral-800/90 rounded-xl border border-neutral-200/80 dark:border-neutral-700/80 shadow-xs transition-all">
+    <div className="flex flex-col gap-2 p-3.5 bg-neutral-50/80 dark:bg-neutral-850/70 rounded-xl border border-neutral-200/70 dark:border-neutral-800 transition-all">
       <div className="flex items-center justify-between">
         <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-neutral-500" />

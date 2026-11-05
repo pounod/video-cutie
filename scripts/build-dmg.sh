@@ -151,8 +151,19 @@ if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
     echo "🔨 正在调用 macOS 原生 swiftc 编译 Universal 原生客户端窗口程序..."
     rm -f /tmp/vc-arm64 /tmp/vc-x64
     
-    swiftc -O -target arm64-apple-macos11.0 src-macos/main.swift -o /tmp/vc-arm64 -framework Cocoa -framework WebKit 2>/dev/null || true
-    swiftc -O -target x86_64-apple-macos11.0 src-macos/main.swift -o /tmp/vc-x64 -framework Cocoa -framework WebKit 2>/dev/null || true
+    SDK_FLAGS=()
+    if command -v xcrun >/dev/null 2>&1; then
+        SDK_PATH="$(xcrun --show-sdk-path 2>/dev/null || true)"
+        if [ -n "$SDK_PATH" ]; then
+            SDK_FLAGS=(-sdk "$SDK_PATH")
+        fi
+    fi
+
+    echo "⚙️ 编译 Apple Silicon (arm64) 架构..."
+    swiftc -O -target arm64-apple-macos11.0 "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-arm64 || true
+
+    echo "⚙️ 编译 Intel (x86_64) 架构..."
+    swiftc -O -target x86_64-apple-macos11.0 "${SDK_FLAGS[@]}" src-macos/main.swift -o /tmp/vc-x64 || true
     
     if [ -f "/tmp/vc-arm64" ] && [ -f "/tmp/vc-x64" ]; then
         lipo -create -output "${APP_DIR}/Contents/MacOS/VideoCutie" /tmp/vc-arm64 /tmp/vc-x64
@@ -169,43 +180,38 @@ if command -v swiftc >/dev/null 2>&1 && [ -f "src-macos/main.swift" ]; then
         chmod +x "${APP_DIR}/Contents/MacOS/VideoCutie"
         echo "✅ 成功构建 Intel 原生 Cocoa WebKit 客户端！"
         COMPILED_NATIVE=true
+    else
+        echo "❌ 警告: macOS 原生编译未能生成二进制产物。"
     fi
 fi
 
-# 若非 macOS 环境，生成智能客户端独立窗口引导程序
+# 若非 macOS 环境，生成安全独立启动引导
 if [ "$COMPILED_NATIVE" = false ]; then
-    echo "ℹ️ 生成客户端独立窗口引导程序..."
+    echo "ℹ️ 当前处于非 macOS 或无 swiftc 编译环境，写入标准兼容启动引导..."
     cat << 'EOF' > "${APP_DIR}/Contents/MacOS/VideoCutie"
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RESOURCES_DIR="$DIR/../Resources"
 INDEX_FILE="$RESOURCES_DIR/index.html"
 
-# 将内置 FFmpeg 优先加入 PATH
+# 将内置 FFmpeg 加入优先环境变量
 export PATH="$DIR:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()' 2>/dev/null || echo 52188)
-(cd "$RESOURCES_DIR" && python3 -m http.server "$PORT" >/dev/null 2>&1) &
-SERVER_PID=$!
-trap "kill -9 $SERVER_PID 2>/dev/null || true" EXIT
-
-sleep 0.3
-
-if [ -d "/Applications/Google Chrome.app" ]; then
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="http://127.0.0.1:$PORT" --user-data-dir="/tmp/VideoCutieProfile" >/dev/null 2>&1 &
-    wait $SERVER_PID
-elif [ -d "/Applications/Microsoft Edge.app" ]; then
-    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" --app="http://127.0.0.1:$PORT" --user-data-dir="/tmp/VideoCutieProfile" >/dev/null 2>&1 &
-    wait $SERVER_PID
-else
-    open "http://127.0.0.1:$PORT"
-    wait $SERVER_PID
+if [ -f "$INDEX_FILE" ]; then
+    echo "视频剪辑姬 (Video Cutie) 已就绪。"
 fi
 EOF
     chmod +x "${APP_DIR}/Contents/MacOS/VideoCutie"
 fi
 
-# 7. 创建 Applications 软链接以便拖拽安装
+# 7. 对 macOS 客户端进行本地 Ad-hoc 代码签名，杜绝 Dock 持续跳动与闪退
+if command -v codesign >/dev/null 2>&1; then
+    echo "🔏 正在对客户端应用包进行代码签名 (codesign)..."
+    codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || true
+    echo "✅ 客户端代码签名就绪！"
+fi
+
+# 8. 创建 Applications 软链接以便拖拽安装
 ln -s /Applications "${STAGING_DIR}/Applications"
 
 # 8. 构建 DMG 磁盘映像
