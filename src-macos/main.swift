@@ -12,7 +12,7 @@ import UniformTypeIdentifiers
  *  - 原生文件拖拽、原生文件打开对话框、原生保存目录选择与访达定位
  */
 
-class MainWindow: NSWindow {
+class MainWindow: NSWindow, NSDraggingDestination {
     weak var bridgeDelegate: AppDelegate?
 
     override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
@@ -20,14 +20,14 @@ class MainWindow: NSWindow {
         registerForDraggedTypes([.fileURL])
     }
 
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+    func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         if let types = sender.draggingPasteboard.types, types.contains(.fileURL) {
             return .copy
         }
         return []
     }
 
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+    func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         let pasteboard = sender.draggingPasteboard
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
             bridgeDelegate?.handleFileDropped(url: firstURL)

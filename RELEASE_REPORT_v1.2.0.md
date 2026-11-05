@@ -19,12 +19,14 @@
   1. **编译器 Target Triple 拼写错误**：在 LLVM / Clang / Swift 编译器工具链规范中，macOS 的 target triple 标识符必须是 `macosx`（如 `arm64-apple-macosx11.0` 与 `x86_64-apple-macosx11.0`），此前写成 `macos` 导致 `swiftc` 抛出 `unrecognized target triple` 致命错误；
   2. **错误吞没与空脚本秒退**：编译语句末尾的 `|| true` 掩盖了编译失败，导致未能生成原生二进制产物，进而触发回退分支写入了一段仅输出文本的 Shell 脚本；当用户双击 `.app` 时，系统执行该脚本并在 0.001 秒内直接执行完毕退出，表现为**点击图标没有任何反应**；
   3. **WebKit 私有 KVC 属性致命崩溃**：在 macOS 14/15 系统中，WebKit 移除了未公开的私有键 `allowFileAccessFromFileURLs`，调用 `setValue(_:forKey:)` 会直接抛出无法被 Swift 捕获的 Objective-C `NSUnknownKeyException` 异常，导致应用在窗口绘制前即时崩溃闪退；
-  4. **AppDelegate 生命周期提前释放**：Cocoa 原生主循环中 `app.delegate` 属于弱引用，若无显式生命周期保护可能在垃圾回收时被提前释放。
+  4. **AppDelegate 生命周期提前释放**：Cocoa 原生主循环中 `app.delegate` 属于弱引用，若无显式生命周期保护可能在垃圾回收时被提前释放；
+  5. **Swift 协议方法误加 override**：`NSDraggingDestination` 在 Cocoa 中属于协议（Protocol）而非 `NSWindow` 的基类方法，此前在 `MainWindow` 的 `draggingEntered` 与 `performDragOperation` 误加了 `override` 关键字，导致 `swiftc` 报 `method does not override any method from its superclass` 编译错误。
 - **全方位加固方案**：
   1. 纠正 `build-dmg.sh` 中的 target triple 为标准 `-target arm64-apple-macosx11.0` 与 `-target x86_64-apple-macosx11.0`，并加入宿主本地默认架构直编兜底；
-  2. 在 CI 构建脚本中设置严格门禁：在 macOS 环境下若原生视窗程序编译未生成二进制，立即阻断并打印详细日志，严禁生成损坏安装包；
-  3. 彻底移除 WebKit 私有 KVC 注入，全面采用 Apple 官方推荐的标准 `loadFileURL(indexURL, allowingReadAccessTo: accessURL)` 授权加载机制，完美兼容 macOS 11 至 macOS 15+ Sequoia；
-  4. 采用 `withExtendedLifetime(strongDelegate)` 强引用锁定 Cocoa 代理生命周期，杜绝提前释放。
+  2. 修复 Swift 语法：为 `MainWindow` 显式声明遵循 `NSDraggingDestination` 协议并移除 `override` 关键字，使 `swiftc` 顺利完成零警告编译；
+  3. 在 CI 构建脚本中设置严格门禁：在 macOS 环境下若原生视窗程序编译未生成二进制，立即阻断并打印详细日志，严禁生成损坏安装包；
+  4. 彻底移除 WebKit 私有 KVC 注入，全面采用 Apple 官方推荐的标准 `loadFileURL(indexURL, allowingReadAccessTo: accessURL)` 授权加载机制，完美兼容 macOS 11 至 macOS 15+ Sequoia；
+  5. 采用 `withExtendedLifetime(strongDelegate)` 强引用锁定 Cocoa 代理生命周期，杜绝提前释放。
 
 #### 2. 全新应用图标替换（完全采纳用户附件设计）
 - **图标更新**：将应用整体图标更换为用户附件提供的全新设计（斜向精准剪刀裁切胶片画卷、带播放三角指示、柔和渐变圆角平底风格）；
