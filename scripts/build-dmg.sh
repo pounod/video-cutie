@@ -71,14 +71,19 @@ cat << EOF > "${APP_DIR}/Contents/Info.plist"
 EOF
 
 # 3. 复制 Web 编译资源到 App Bundle 的 Resources
-if [ -d "dist" ]; then
-    echo "📂 复制 Web 客户端界面资源到 App Bundle..."
-    cp -R dist/* "${APP_DIR}/Contents/Resources/"
-else
-    echo "⚠️ 警告: 未找到 dist 目录，正在编译..."
+if [ ! -d "dist" ]; then
+    echo "⚙️ 编译 Web 客户端最新资源..."
     npm run build
-    cp -R dist/* "${APP_DIR}/Contents/Resources/"
 fi
+
+echo "📂 复制 Web 客户端界面资源到 App Bundle..."
+cp -R dist/* "${APP_DIR}/Contents/Resources/"
+
+# 移除 index.html 中可能导致本地加载产生跨域限制的 crossorigin 标记
+if [ -f "${APP_DIR}/Contents/Resources/index.html" ]; then
+    sed -i '' 's/crossorigin//g' "${APP_DIR}/Contents/Resources/index.html" 2>/dev/null || sed -i 's/crossorigin//g' "${APP_DIR}/Contents/Resources/index.html" 2>/dev/null || true
+fi
+chmod -R a+r "${APP_DIR}/Contents/Resources"
 
 # 4. 图标适配：拷贝最新生成的无黑边 Retina macOS AppIcon.icns
 echo "🎨 正在适配 macOS 桌面图标 (AppIcon.icns)..."

@@ -37,9 +37,87 @@ class MainWindow: NSWindow, NSDraggingDestination {
     }
 }
 
+// 自定义安全 Scheme 处理器，彻底解决 WebKit 在 file:// 协议下阻断 Vite ES Module (type="module") 导致的空白窗口
+class LocalBundleSchemeHandler: NSObject, WKURLSchemeHandler {
+    let baseDirectory: URL
+
+    init(baseDirectory: URL) {
+        self.baseDirectory = baseDirectory
+        super.init()
+    }
+
+    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
+        guard let url = urlSchemeTask.request.url else {
+            urlSchemeTask.didFailWithError(NSError(domain: "LocalBundleSchemeHandler", code: 400, userInfo: nil))
+            return
+        }
+
+        var path = url.path
+        if path.isEmpty || path == "/" {
+            path = "/index.html"
+        }
+        let relativePath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let fileURL = baseDirectory.appendingPathComponent(relativePath)
+
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir), !isDir.boolValue {
+            do {
+                let data = try Data(contentsOf: fileURL)
+                let ext = fileURL.pathExtension.lowercased()
+                var mime = "application/octet-stream"
+                if #available(macOS 11.0, *), let ut = UTType(filenameExtension: ext), let m = ut.preferredMIMEType {
+                    mime = m
+                } else {
+                    switch ext {
+                    case "html", "htm": mime = "text/html"
+                    case "js", "mjs": mime = "text/javascript"
+                    case "css": mime = "text/css"
+                    case "json": mime = "application/json"
+                    case "png": mime = "image/png"
+                    case "jpg", "jpeg": mime = "image/jpeg"
+                    case "svg": mime = "image/svg+xml"
+                    default: mime = "application/octet-stream"
+                    }
+                }
+
+                if (ext == "js" || ext == "mjs") && !mime.contains("charset") {
+                    mime = "text/javascript; charset=utf-8"
+                } else if (ext == "html" || ext == "htm") && !mime.contains("charset") {
+                    mime = "text/html; charset=utf-8"
+                } else if ext == "css" && !mime.contains("charset") {
+                    mime = "text/css; charset=utf-8"
+                }
+
+                let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: 200,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: [
+                        "Content-Type": mime,
+                        "Content-Length": "\(data.count)",
+                        "Access-Control-Allow-Origin": "*"
+                    ]
+                )!
+
+                urlSchemeTask.didReceive(response)
+                urlSchemeTask.didReceive(data)
+                urlSchemeTask.didFinish()
+            } catch {
+                urlSchemeTask.didFailWithError(error)
+            }
+        } else {
+            let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorFileDoesNotExist, userInfo: nil)
+            urlSchemeTask.didFailWithError(error)
+        }
+    }
+
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler {
     var window: MainWindow!
     var webView: WKWebView!
+    private var schemeHandler: LocalBundleSchemeHandler?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 1. 设置标准应用菜单栏 (确保 Cmd+Q 退出、Cmd+W 关闭、Cmd+C/V 剪切板正常工作)
@@ -69,7 +147,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         window.isReleasedWhenClosed = false
         window.delegate = self
 
-        // 4. 配置 WebKit 离线资源加载与本地通信桥
+        // 4. 定位 App Bundle 内的 Resources 目录或本地 dist 目录
+        var resourceURL: URL? = nil
+        if let resourcePath = Bundle.main.resourcePath {
+            let indexURL = URL(fileURLWithPath: resourcePath).appendingPathComponent("index.html")
+            if FileManager.default.fileExists(atPath: indexURL.path) {
+                resourceURL = URL(fileURLWithPath: resourcePath)
+            }
+        }
+        if resourceURL == nil {
+            let localURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("dist")
+            if FileManager.default.fileExists(atPath: localURL.appendingPathComponent("index.html").path) {
+                resourceURL = localURL
+            }
+        }
+
+        // 5. 配置 WebKit 离线资源加载与本地通信桥
         let userContentController = WKUserContentController()
         userContentController.add(self, name: "nativeBridge")
 
@@ -79,32 +172,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         webpagePreferences.allowsContentJavaScript = true
         config.defaultWebpagePreferences = webpagePreferences
 
+        // 核心加固：注册 app:// 自定义安全 Scheme 彻底杜绝 file:// 协议对 ES Module 的 CORS 拦截与白屏
+        if let resDir = resourceURL {
+            let handler = LocalBundleSchemeHandler(baseDirectory: resDir)
+            self.schemeHandler = handler
+            config.setURLSchemeHandler(handler, forURLScheme: "app")
+        }
+
         webView = WKWebView(frame: window.contentView!.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
         window.contentView?.addSubview(webView)
 
-        // 5. 定位并加载 App Bundle 内的 Resources/index.html
-        var loaded = false
-        if let resourcePath = Bundle.main.resourcePath {
-            let indexURL = URL(fileURLWithPath: resourcePath).appendingPathComponent("index.html")
-            if FileManager.default.fileExists(atPath: indexURL.path) {
-                let accessURL = URL(fileURLWithPath: resourcePath)
-                webView.loadFileURL(indexURL, allowingReadAccessTo: accessURL)
-                loaded = true
+        // 6. 加载客户端界面
+        if resourceURL != nil {
+            if let appURL = URL(string: "app://localhost/index.html") {
+                webView.load(URLRequest(url: appURL))
             }
+        } else {
+            webView.loadHTMLString("<html><body style='font-family:-apple-system;padding:40px;text-align:center;'><h2>视频剪辑姬 (Video Cutie)</h2><p>未找到前端界面资源文件，请确保应用安装完整。</p></body></html>", baseURL: nil)
         }
 
-        // 兜底回退：若在当前目录或同级开发目录运行
-        if !loaded {
-            let localURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("dist/index.html")
-            if FileManager.default.fileExists(atPath: localURL.path) {
-                let accessDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-                webView.loadFileURL(localURL, allowingReadAccessTo: accessDir)
-                loaded = true
-            }
-        }
-
-        // 6. 显示并聚焦原生客户端窗口
+        // 7. 显示并聚焦原生客户端窗口
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

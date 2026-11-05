@@ -1,5 +1,6 @@
 import React from 'react';
 import { Moon, Sun, Info } from 'lucide-react';
+import appIcon from '../assets/app_icon.png';
 import { APP_INFO } from '../utils/dmgGenerator';
 
 interface MacTitleBarProps {
@@ -21,10 +22,9 @@ export const MacTitleBar: React.FC<MacTitleBarProps> = ({
       {/* Zone 1: Native title bar spacing for macOS Traffic Lights + Clean App Branding */}
       <div className="flex items-center gap-2.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <img
-          src="/src/assets/app_icon.png"
+          src={appIcon}
           alt="视频剪辑姬"
           className="w-5 h-5 rounded-md object-cover shadow-xs"
-          referrerPolicy="no-referrer"
         />
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-sm text-neutral-900 dark:text-neutral-100 tracking-tight">

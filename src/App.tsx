@@ -19,6 +19,7 @@ import {
   Zap,
   Film
 } from 'lucide-react';
+import appIcon from './assets/app_icon.png';
 
 export default function App() {
   // Theme State
@@ -333,10 +334,9 @@ export default function App() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
                 <div className="flex items-center gap-3.5">
                   <img
-                    src="/src/assets/app_icon.png"
+                    src={appIcon}
                     alt="视频剪辑姬 App Icon"
                     className="w-14 h-14 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10"
-                    referrerPolicy="no-referrer"
                   />
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">

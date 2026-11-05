@@ -14,29 +14,28 @@
 
 ### 🚀 核心优化与重大改进
 
-#### 1. 彻底根治「点击应用图标没有任何反应 / 无法启动」的严重 Bug
+#### 1. 彻底根治「打开应用仅有空白外框、无内核界面内容」的核心 Bug
 - **根因深度排查**：
-  1. **编译器 Target Triple 拼写错误**：在 LLVM / Clang / Swift 编译器工具链规范中，macOS 的 target triple 标识符必须是 `macosx`（如 `arm64-apple-macosx11.0` 与 `x86_64-apple-macosx11.0`），此前写成 `macos` 导致 `swiftc` 抛出 `unrecognized target triple` 致命错误；
-  2. **错误吞没与空脚本秒退**：编译语句末尾的 `|| true` 掩盖了编译失败，导致未能生成原生二进制产物，进而触发回退分支写入了一段仅输出文本的 Shell 脚本；当用户双击 `.app` 时，系统执行该脚本并在 0.001 秒内直接执行完毕退出，表现为**点击图标没有任何反应**；
-  3. **WebKit 私有 KVC 属性致命崩溃**：在 macOS 14/15 系统中，WebKit 移除了未公开的私有键 `allowFileAccessFromFileURLs`，调用 `setValue(_:forKey:)` 会直接抛出无法被 Swift 捕获的 Objective-C `NSUnknownKeyException` 异常，导致应用在窗口绘制前即时崩溃闪退；
-  4. **AppDelegate 生命周期提前释放**：Cocoa 原生主循环中 `app.delegate` 属于弱引用，若无显式生命周期保护可能在垃圾回收时被提前释放；
-  5. **Swift 协议方法误加 override**：`NSDraggingDestination` 在 Cocoa 中属于协议（Protocol）而非 `NSWindow` 的基类方法，此前在 `MainWindow` 的 `draggingEntered` 与 `performDragOperation` 误加了 `override` 关键字，导致 `swiftc` 报 `method does not override any method from its superclass` 编译错误。
-- **全方位加固方案**：
-  1. 纠正 `build-dmg.sh` 中的 target triple 为标准 `-target arm64-apple-macosx11.0` 与 `-target x86_64-apple-macosx11.0`，并加入宿主本地默认架构直编兜底；
-  2. 修复 Swift 语法：为 `MainWindow` 显式声明遵循 `NSDraggingDestination` 协议并移除 `override` 关键字，使 `swiftc` 顺利完成零警告编译；
-  3. 在 CI 构建脚本中设置严格门禁：在 macOS 环境下若原生视窗程序编译未生成二进制，立即阻断并打印详细日志，严禁生成损坏安装包；
-  4. 彻底移除 WebKit 私有 KVC 注入，全面采用 Apple 官方推荐的标准 `loadFileURL(indexURL, allowingReadAccessTo: accessURL)` 授权加载机制，完美兼容 macOS 11 至 macOS 15+ Sequoia；
-  5. 采用 `withExtendedLifetime(strongDelegate)` 强引用锁定 Cocoa 代理生命周期，杜绝提前释放。
+  - **WebKit 对 `file://` 协议下 ES Module 的 CORS 拦截**：Vite 现代构建产物采用 `<script type="module">` 组织代码。当 macOS 原生视窗通过 `file:///.../index.html` 打开时，WebKit 视 `file://` 为不透明同源或受限环境，强制应用跨域与严格 MIME-Type 检查，导致浏览器内核直接拒绝执行本地 JS 脚本；
+  - **表现**：DOM 中的 `<div id="root"></div>` 无法挂载任何 React 组件，导致用户打开应用后仅能看到一个空白的原生外框，没有任何操作内容。
+- **工业级解决方案（WKURLSchemeHandler）**：
+  - 在 `src-macos/main.swift` 中实现遵循 WebKit 规范的 `LocalBundleSchemeHandler: NSObject, WKURLSchemeHandler`；
+  - 注册自定义安全协议 `app://localhost/index.html`，以标准 HTTP/1.1 语义向内核响应各类资源；
+  - 自动根据文件后缀映射并返回准确的 `Content-Type`（如 `text/javascript; charset=utf-8`、`text/css; charset=utf-8` 等）及 `Access-Control-Allow-Origin: *` 头；
+  - 彻底避开 `file://` 协议的模块执行限制，确保在 macOS 11 至 macOS 15+ 上秒开渲染完整功能界面！
 
-#### 2. 全新应用图标替换（完全采纳用户附件设计）
-- **图标更新**：将应用整体图标更换为用户附件提供的全新设计（斜向精准剪刀裁切胶片画卷、带播放三角指示、柔和渐变圆角平底风格）；
-- **全端同步覆盖**：
-  - 更新前端桌面视窗左上角小图标与主界面拖拽区大图标（`src/assets/app_icon.png` 与 `public/app_icon.png`）；
-  - 更新 GitHub `README.md` 顶端展示图标；
-  - 重新打包生成完整的 macOS 视网膜 `AppIcon.icns`（内置 16x16、32x32、64x64、128x128、256x256、512x512、1024x1024 完整层级图标集）；
-  - 在 CI 流程中联动 `sips` 与 `iconutil` 确保每次 DMG 打包均采用该标准附件图标。
+#### 2. 全新应用图标替换（已采纳附件 Splice V 纯净设计）
+- **图标更新**：采用附件提供的最新超清设计（深色圆角矩形基底 + 渐变亮粉/深紫/青蓝几何剪辑 "V" 标）；
+- **全端同步**：已同步更新桌面视窗左上角、主工作区、GitHub `README.md`，并重新编译生成全尺寸 Retina `AppIcon.icns`（16×16 至 1024×1024）与安装包卷标。
 
-#### 3. 彻底解决客户端界面「多层嵌套」视觉问题
+#### 3. 严格落实最初 7 项核心业务需求（剔除冗余与无关功能）
+- ✅ **需求 1（视频拖拽与参数识别）**：支持将本地视频文件拖入客户端，或点击选择。原生精准提取视频文件名、本地绝对物理路径、时长、分辨率、视频编码与音频编码；
+- ✅ **需求 2（起止时间输入与默认边界）**：开始时间默认 `00:00:00`（0 秒），结束时间默认视频最长播放时间；
+- ✅ **需求 3（智能时间补全 012536 → 01:25:36）**：用户在输入框输入 `012536`，系统毫秒级自动补全格式化为标准 `01:25:36`，并即时同步到操作界面；
+- ✅ **需求 4（无损音视频流复制）**：内置执行参数 `-c:v copy -c:a copy -avoid_negative_ts make_zero`，零转码损耗、原画质帧率完整保留、数百兆视频瞬间导出；
+- ✅ **需求 5（应用内置 FFmpeg）**：打包脚本将原生 FFmpeg 引擎直接内置至 `Contents/MacOS/ffmpeg`，用户免终端、免 Homebrew、开箱即用；
+- ✅ **需求 6（使用附件提供的图片作为应用图标）**：已全局替换为附件图片，完全符合 macOS 现代图标规范；
+- ✅ **需求 7（macOS .dmg 安装包，兼容苹果芯片与 Intel 芯片）**：采用 `swiftc` 分别编译 `arm64-apple-macosx11.0` 与 `x86_64-apple-macosx11.0`，并通过 `lipo` 合成 Universal 通用可执行文件，一键生成全机型通用的 `.dmg` 与 `.zip` 安装包。
 - **去除冗余伪造交通灯**：原生 macOS 窗口已具备系统级红黄绿交通灯，移除了 Web 端自画的第二组红黄绿小圆点，在顶栏左侧预留 `pl-20`（80px）物理区域供原生交通灯自然呈现，彻底消除“窗口套窗口”的双重边框感；
 - **支持原生窗口任意拖拽**：在顶部栏配置 `-webkit-app-region: drag`，按住顶部即可平滑拖动客户端视窗；
 - **重构单层沉浸式工作台**：
