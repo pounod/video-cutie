@@ -46,7 +46,7 @@ export const DmgInstallerModal: React.FC<DmgInstallerModalProps> = ({ onGoToActi
         </div>
 
         {/* macOS Classic Finder DMG Window Simulator */}
-        <div className="w-full max-w-xl bg-white/95 dark:bg-neutral-850/95 backdrop-blur-xl rounded-xl border border-neutral-300 dark:border-neutral-700 shadow-xl overflow-hidden">
+        <div className="w-full max-w-xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl rounded-xl border border-neutral-300 dark:border-neutral-700 shadow-xl overflow-hidden">
           {/* DMG Window Header */}
           <div className="flex items-center px-4 py-2.5 bg-neutral-100/90 dark:bg-neutral-800/90 border-b border-neutral-200 dark:border-neutral-700/80">
             <div className="flex items-center gap-1.5">

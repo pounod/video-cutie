@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, CheckCircle2 } from 'lucide-react';
 import { APP_INFO } from '../utils/dmgGenerator';
+import appIcon from '../assets/app_icon.png';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -11,10 +12,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden flex flex-col">
         {/* macOS Style Window Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-850/50">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-800/80">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-[#FF5F56] cursor-pointer" onClick={onClose} />
             <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
@@ -25,7 +26,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded"
+            className="p-1 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -35,10 +36,9 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         <div className="p-6 flex flex-col items-center text-center gap-4">
           <div className="relative">
             <img
-              src="/src/assets/app_icon.png"
+              src={appIcon}
               alt={APP_INFO.appNameZh}
               className="w-20 h-20 rounded-2xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
-              referrerPolicy="no-referrer"
             />
           </div>
 

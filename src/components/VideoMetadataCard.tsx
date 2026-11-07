@@ -55,7 +55,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
 
       {/* Grid of metadata items */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-850/60 border border-neutral-100 dark:border-neutral-800">
+        <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700/80">
           <span className="text-neutral-500 dark:text-neutral-400 text-[11px]">分辨率 / 画面比</span>
           <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100">
             {metadata.width} × {metadata.height}
@@ -65,7 +65,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
           </span>
         </div>
 
-        <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-850/60 border border-neutral-100 dark:border-neutral-800">
+        <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700/80">
           <span className="text-neutral-500 dark:text-neutral-400 text-[11px]">完整时长 / 帧率</span>
           <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100">
             {formatSecondsToHHMMSS(metadata.duration)}
@@ -75,7 +75,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
           </span>
         </div>
 
-        <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-850/60 border border-neutral-100 dark:border-neutral-800">
+        <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700/80">
           <span className="text-neutral-500 dark:text-neutral-400 text-[11px]">原文件大小 / 封装</span>
           <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100 truncate" title={metadata.name}>
             {formatFileSize(metadata.size)}
@@ -98,7 +98,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
 
       {/* File Path indicator if loaded from disk */}
       {metadata.filePath && (
-        <div className="flex items-center gap-2 p-2 bg-neutral-50 dark:bg-neutral-850/50 rounded-lg border border-neutral-200/60 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 font-mono truncate">
+        <div className="flex items-center gap-2 p-2 bg-neutral-50 dark:bg-neutral-800/80 rounded-lg border border-neutral-200/60 dark:border-neutral-700/80 text-xs text-neutral-500 dark:text-neutral-400 font-mono truncate">
           <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
           <span className="text-neutral-400 shrink-0">源文件路径:</span>
           <span className="text-neutral-800 dark:text-neutral-200 truncate">{metadata.filePath}</span>
@@ -106,12 +106,12 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
       )}
 
       {/* Stream Copy Specifications Banner */}
-      <div className="p-3 bg-neutral-50 dark:bg-neutral-850/40 rounded-lg border border-neutral-200/60 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
+      <div className="p-3 bg-neutral-50 dark:bg-neutral-800/80 rounded-lg border border-neutral-200/60 dark:border-neutral-700/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-medium">
             <Film className="w-3.5 h-3.5 text-pink-500" />
             <span>视频流:</span>
-            <code className="bg-neutral-200/60 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-[11px] font-mono text-pink-600 dark:text-pink-400 font-semibold">
+            <code className="bg-neutral-200/60 dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[11px] font-mono text-pink-600 dark:text-pink-400 font-semibold">
               -c:v copy ({metadata.videoCodec})
             </code>
           </div>

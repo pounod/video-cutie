@@ -89,6 +89,21 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // System Dark Mode synchronization with macOS appearance
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (e: MediaQueryListEvent) => {
+      // If user hasn't explicitly set a custom theme in localStorage, sync with system
+      const saved = localStorage.getItem('videocutie_theme');
+      if (!saved) {
+        setIsDarkMode(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
+  }, []);
+
   // Native macOS WKWebView Bridge setup
   useEffect(() => {
     const win = window as unknown as {
@@ -96,6 +111,26 @@ export default function App() {
       onSaveDirectorySelected?: (path: string) => void;
       onDefaultPathsReceived?: (paths: { movies?: string; downloads?: string; desktop?: string }) => void;
       onOpenAboutModal?: () => void;
+      onSystemThemeChanged?: (isDark: boolean) => void;
+      onNativeVideoFileDropped?: (path: string, name: string) => void;
+      onNativeVideoFileSelected?: (path: string, name: string) => void;
+    };
+
+    win.onSystemThemeChanged = (isDark: boolean) => {
+      setIsDarkMode(isDark);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    win.onNativeVideoFileDropped = (path: string, name: string) => {
+      loadNativeVideoFile(path, name);
+    };
+
+    win.onNativeVideoFileSelected = (path: string, name: string) => {
+      loadNativeVideoFile(path, name);
     };
 
     win.onNativeTrimComplete = (success: boolean, outputPath?: string, errorMsg?: string) => {
@@ -135,12 +170,57 @@ export default function App() {
       setIsAboutOpen(true);
     };
 
-    // Ask native bridge for default macOS directories on startup
+    // Ask native bridge for default macOS directories and current system theme on startup
     const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
     if (nativeBridge) {
       nativeBridge.postMessage({ action: 'getDefaultPaths' });
+      nativeBridge.postMessage({ action: 'getSystemTheme' });
     }
   }, []);
+
+  // Handler for native video files dropped into the window or selected via NSOpenPanel
+  const loadNativeVideoFile = (filePath: string, fileName: string) => {
+    const isCustomScheme = window.location.protocol === 'app:';
+    const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+    const fileUrl = isCustomScheme ? `app://local-file${cleanPath}` : (filePath.startsWith('file://') ? filePath : `file://${filePath}`);
+
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'metadata';
+    tempVideo.src = fileUrl;
+
+    const onFinish = (w: number, h: number, d: number) => {
+      const width = w || 1920;
+      const height = h || 1080;
+      const duration = d || 60;
+      const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+      const divisor = gcd(width, height);
+      const aspect = `${width / divisor}:${height / divisor}`;
+      const ext = fileName.split('.').pop()?.toLowerCase() || 'mp4';
+
+      const meta: VideoMetadata = {
+        name: fileName,
+        filePath: filePath, // REAL ABSOLUTE PATH FOR FFmpeg!
+        size: 0,
+        duration: duration,
+        width: width,
+        height: height,
+        aspectRatio: aspect,
+        format: ext.toUpperCase(),
+        videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
+        audioCodec: 'AAC',
+        fps: 30,
+      };
+
+      handleVideoLoaded(null, fileUrl, meta);
+    };
+
+    tempVideo.onloadedmetadata = () => {
+      onFinish(tempVideo.videoWidth, tempVideo.videoHeight, tempVideo.duration);
+    };
+    tempVideo.onerror = () => {
+      onFinish(1920, 1080, 60);
+    };
+  };
 
   // Video event listeners
   useEffect(() => {
@@ -302,7 +382,12 @@ export default function App() {
     setExportErrorMessage(null);
 
     const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
-    if (nativeBridge && metadata?.filePath) {
+    if (nativeBridge) {
+      if (!metadata?.filePath) {
+        setIsExporting(false);
+        setExportErrorMessage('⚠️ 客户端未能定位到该视频在 macOS 系统上的绝对路径。请点击“更换视频”重新选取文件后导出。');
+        return;
+      }
       setExportProgress(35);
       nativeBridge.postMessage({
         action: 'executeTrim',
@@ -605,7 +690,7 @@ export default function App() {
                 </div>
 
                 {/* Path input & preview */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3.5 py-2 bg-neutral-50 dark:bg-neutral-850/80 rounded-lg border border-neutral-200/70 dark:border-neutral-800 text-xs font-mono">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3.5 py-2 bg-neutral-50 dark:bg-neutral-800/90 rounded-lg border border-neutral-200/70 dark:border-neutral-700/80 text-xs font-mono">
                   <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
                     <span className="text-neutral-400 select-none shrink-0 font-sans text-[11px]">设定保存目录:</span>
                     <span className="text-pink-600 dark:text-pink-400 font-bold truncate" title={saveDirectory}>

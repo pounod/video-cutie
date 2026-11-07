@@ -178,7 +178,7 @@ export const DropZone: React.FC<DropZoneProps> = ({ onVideoLoaded }) => {
       className={`relative border-2 border-dashed rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
         isDragging
           ? 'border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 scale-[1.01]'
-          : 'border-neutral-300 dark:border-neutral-700 bg-white/70 dark:bg-neutral-900/60 hover:border-pink-400 dark:hover:border-pink-500 hover:bg-neutral-50 dark:hover:bg-neutral-850/80 shadow-xs'
+          : 'border-neutral-300 dark:border-neutral-700 bg-white/70 dark:bg-neutral-900/80 hover:border-pink-400 dark:hover:border-pink-500 hover:bg-neutral-50 dark:hover:bg-neutral-800/80 shadow-xs'
       }`}
     >
       <input

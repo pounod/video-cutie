@@ -35,6 +35,41 @@ class MainWindow: NSWindow, NSDraggingDestination {
         }
         return false
     }
+class DragDroppableWebView: WKWebView {
+    weak var bridgeDelegate: AppDelegate?
+
+    override init(frame: NSRect, configuration: WKWebViewConfiguration) {
+        super.init(frame: frame, configuration: configuration)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if let types = sender.draggingPasteboard.types, types.contains(.fileURL) {
+            return .copy
+        }
+        return []
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if let types = sender.draggingPasteboard.types, types.contains(.fileURL) {
+            return .copy
+        }
+        return []
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let pasteboard = sender.draggingPasteboard
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
+            bridgeDelegate?.handleFileDropped(url: firstURL)
+            return true
+        }
+        return false
+    }
 }
 
 // 自定义安全 Scheme 处理器，彻底解决 WebKit 在 file:// 协议下阻断 Vite ES Module (type="module") 导致的空白窗口
@@ -50,6 +85,41 @@ class LocalBundleSchemeHandler: NSObject, WKURLSchemeHandler {
         guard let url = urlSchemeTask.request.url else {
             urlSchemeTask.didFailWithError(NSError(domain: "LocalBundleSchemeHandler", code: 400, userInfo: nil))
             return
+        }
+
+        // 支持加载本地被选中的视频流，消除跨源安全阻断
+        if url.host == "local-file" {
+            let localFilePath = url.path
+            let fileURL = URL(fileURLWithPath: localFilePath)
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                do {
+                    let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
+                    let ext = fileURL.pathExtension.lowercased()
+                    var mime = "video/mp4"
+                    if ext == "mov" { mime = "video/quicktime" }
+                    else if ext == "webm" { mime = "video/webm" }
+                    else if ext == "mkv" { mime = "video/x-matroska" }
+
+                    let response = HTTPURLResponse(
+                        url: url,
+                        statusCode: 200,
+                        httpVersion: "HTTP/1.1",
+                        headerFields: [
+                            "Content-Type": mime,
+                            "Content-Length": "\(data.count)",
+                            "Accept-Ranges": "bytes",
+                            "Access-Control-Allow-Origin": "*"
+                        ]
+                    )!
+                    urlSchemeTask.didReceive(response)
+                    urlSchemeTask.didReceive(data)
+                    urlSchemeTask.didFinish()
+                    return
+                } catch {
+                    urlSchemeTask.didFailWithError(error)
+                    return
+                }
+            }
         }
 
         var path = url.path
@@ -179,9 +249,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             config.setURLSchemeHandler(handler, forURLScheme: "app")
         }
 
-        webView = WKWebView(frame: window.contentView!.bounds, configuration: config)
-        webView.autoresizingMask = [.width, .height]
+        let customWebView = DragDroppableWebView(frame: window.contentView!.bounds, configuration: config)
+        customWebView.bridgeDelegate = self
+        customWebView.autoresizingMask = [.width, .height]
+        webView = customWebView
         window.contentView?.addSubview(webView)
+
+        // 监听系统深色模式/浅色模式切换
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(handleThemeChanged),
+            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil
+        )
 
         // 6. 加载客户端界面
         if resourceURL != nil {
@@ -193,6 +273,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         }
 
         // 7. 显示并聚焦原生客户端窗口
+        window.backgroundColor = NSColor.windowBackgroundColor
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -323,15 +404,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
                 self.webView.evaluateJavaScript("window.onDefaultPathsReceived && window.onDefaultPathsReceived(\(json));", completionHandler: nil)
             }
 
+        case "getSystemTheme":
+            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript("window.onSystemThemeChanged && window.onSystemThemeChanged(\(isDark));", completionHandler: nil)
+            }
+
         case "revealInFinder":
             let filePath = body["path"] as? String ?? ""
             if !filePath.isEmpty {
-                let url = URL(fileURLWithPath: filePath)
+                let expanded = (filePath as NSString).expandingTildeInPath
+                let url = URL(fileURLWithPath: expanded)
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             }
 
         default:
             break
+        }
+    }
+
+    @objc func handleThemeChanged() {
+        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.onSystemThemeChanged && window.onSystemThemeChanged(\(isDark));", completionHandler: nil)
         }
     }
 
@@ -418,12 +513,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         task.executableURL = URL(fileURLWithPath: binPath)
         task.currentDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
 
-        var arguments = ["-ss", start]
+        var arguments = ["-i", input]
+        if !start.isEmpty && start != "00:00:00" {
+            arguments.append(contentsOf: ["-ss", start])
+        }
         if !end.isEmpty {
             arguments.append(contentsOf: ["-to", end])
         }
         arguments.append(contentsOf: [
-            "-i", input,
             "-c:v", "copy",
             "-c:a", "copy",
             "-avoid_negative_ts", "make_zero",

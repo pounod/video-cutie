@@ -100,7 +100,7 @@ export const GitHubActionsModal: React.FC = () => {
       </div>
 
       {/* GitHub Releases Preview Card */}
-      <div className="p-5 bg-white dark:bg-neutral-850 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-4">
+      <div className="p-5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700/80 shadow-xs flex flex-col gap-4">
         <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-700/60 pb-3">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-pink-500" />
