@@ -35,6 +35,8 @@ class MainWindow: NSWindow, NSDraggingDestination {
         }
         return false
     }
+}
+
 class DragDroppableWebView: WKWebView {
     weak var bridgeDelegate: AppDelegate?
 
@@ -384,13 +386,53 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
                 panel.canChooseDirectories = true
                 panel.canCreateDirectories = true
                 panel.allowsMultipleSelection = false
-                panel.title = "选择视频剪辑保存路径"
-                panel.prompt = "选择目录"
+                panel.title = "选择保存路径并申请 macOS 系统文件夹访问权限"
+                panel.prompt = "授权并设定保存路径"
+                panel.message = "请选择用于保存裁剪视频的目标文件夹，并确认授予「视频剪辑姬」对此文件夹的写入权限。"
                 if panel.runModal() == .OK, let url = panel.url {
                     let path = url.path
                     let escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
                     self.webView.evaluateJavaScript("window.onSaveDirectorySelected && window.onSaveDirectorySelected(\"\(escapedPath)\");", completionHandler: nil)
+                    self.webView.evaluateJavaScript("window.onFolderPermissionGranted && window.onFolderPermissionGranted(\"\(escapedPath)\", true);", completionHandler: nil)
                 }
+            }
+
+        case "requestFolderPermission":
+            let targetPath = body["path"] as? String ?? ""
+            let expandedPath = (targetPath as NSString).expandingTildeInPath
+            DispatchQueue.main.async {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = false
+                panel.canChooseDirectories = true
+                panel.canCreateDirectories = true
+                panel.allowsMultipleSelection = false
+                panel.title = "申请 macOS 文件夹读写访问权限"
+                panel.prompt = "授权写入权限"
+                panel.message = "请确认授予「视频剪辑姬」对此文件夹的写入访问权限，以确保剪辑后视频正常保存。"
+                if !expandedPath.isEmpty && FileManager.default.fileExists(atPath: expandedPath) {
+                    panel.directoryURL = URL(fileURLWithPath: expandedPath)
+                }
+                if panel.runModal() == .OK, let url = panel.url {
+                    let path = url.path
+                    let escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+                    self.webView.evaluateJavaScript("window.onFolderPermissionGranted && window.onFolderPermissionGranted(\"\(escapedPath)\", true);", completionHandler: nil)
+                    self.webView.evaluateJavaScript("window.onSaveDirectorySelected && window.onSaveDirectorySelected(\"\(escapedPath)\");", completionHandler: nil)
+                }
+            }
+
+        case "checkFolderPermission":
+            let targetPath = body["path"] as? String ?? ""
+            let expandedPath = (targetPath as NSString).expandingTildeInPath
+            var isWritable = false
+            if FileManager.default.fileExists(atPath: expandedPath) {
+                isWritable = FileManager.default.isWritableFile(atPath: expandedPath)
+            } else {
+                let parent = URL(fileURLWithPath: expandedPath).deletingLastPathComponent().path
+                isWritable = FileManager.default.isWritableFile(atPath: parent)
+            }
+            let escapedPath = targetPath.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+            DispatchQueue.main.async {
+                self.webView.evaluateJavaScript("window.onFolderPermissionChecked && window.onFolderPermissionChecked(\"\(escapedPath)\", \(isWritable));", completionHandler: nil)
             }
 
         case "getDefaultPaths":

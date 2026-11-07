@@ -66,6 +66,16 @@ cat << EOF > "${APP_DIR}/Contents/Info.plist"
     <string>Copyright © 2026 视频剪辑姬 (Video Cutie). All rights reserved.</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.video</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>需要访问您的“桌面”文件夹，以保存裁剪完成的视频文件。</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>需要访问您的“文稿”文件夹，以保存裁剪完成的视频文件。</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>需要访问您的“下载”文件夹，以保存裁剪完成的视频文件。</string>
+    <key>NSMoviesFolderUsageDescription</key>
+    <string>需要访问您的“影片”文件夹，以读取或保存裁剪完成的视频文件。</string>
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>需要访问您的外部储存设备，以读取或保存裁剪完成的视频文件。</string>
 </dict>
 </plist>
 EOF

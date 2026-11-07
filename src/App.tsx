@@ -17,7 +17,9 @@ import {
   FolderCheck,
   AlertCircle,
   Zap,
-  Film
+  Film,
+  ShieldCheck,
+  Key
 } from 'lucide-react';
 import appIcon from './assets/app_icon.png';
 
@@ -61,6 +63,7 @@ export default function App() {
     return '~/Movies';
   });
   const [defaultPaths, setDefaultPaths] = useState<{ movies?: string; downloads?: string; desktop?: string }>({});
+  const [hasFolderPermission, setHasFolderPermission] = useState<boolean | null>(null);
 
   const updateSaveDirectory = (newPath: string) => {
     if (!newPath || !newPath.trim()) return;
@@ -68,6 +71,10 @@ export default function App() {
     setSaveDirectory(cleanPath);
     if (typeof window !== 'undefined') {
       localStorage.setItem('videocutie_save_directory', cleanPath);
+    }
+    const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
+    if (nativeBridge) {
+      nativeBridge.postMessage({ action: 'checkFolderPermission', path: cleanPath });
     }
   };
 
@@ -109,6 +116,8 @@ export default function App() {
     const win = window as unknown as {
       onNativeTrimComplete?: (success: boolean, outputPath?: string, errorMsg?: string) => void;
       onSaveDirectorySelected?: (path: string) => void;
+      onFolderPermissionGranted?: (path: string, granted: boolean) => void;
+      onFolderPermissionChecked?: (path: string, writable: boolean) => void;
       onDefaultPathsReceived?: (paths: { movies?: string; downloads?: string; desktop?: string }) => void;
       onOpenAboutModal?: () => void;
       onSystemThemeChanged?: (isDark: boolean) => void;
@@ -153,6 +162,17 @@ export default function App() {
       }
     };
 
+    win.onFolderPermissionGranted = (path: string, granted: boolean) => {
+      setHasFolderPermission(granted);
+      if (path) {
+        updateSaveDirectory(path);
+      }
+    };
+
+    win.onFolderPermissionChecked = (_path: string, writable: boolean) => {
+      setHasFolderPermission(writable);
+    };
+
     win.onDefaultPathsReceived = (paths) => {
       if (paths) {
         setDefaultPaths(paths);
@@ -170,11 +190,13 @@ export default function App() {
       setIsAboutOpen(true);
     };
 
-    // Ask native bridge for default macOS directories and current system theme on startup
+    // Ask native bridge for default macOS directories, permission status and current system theme on startup
     const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
     if (nativeBridge) {
       nativeBridge.postMessage({ action: 'getDefaultPaths' });
       nativeBridge.postMessage({ action: 'getSystemTheme' });
+      const currentDir = typeof window !== 'undefined' ? localStorage.getItem('videocutie_save_directory') || '~/Movies' : '~/Movies';
+      nativeBridge.postMessage({ action: 'checkFolderPermission', path: currentDir });
     }
   }, []);
 
@@ -337,13 +359,23 @@ export default function App() {
     setLastExportedPath(null);
   };
 
-  // Select Save Directory (Native Open Panel)
+  // Select Save Directory (Native Open Panel with Permission)
   const handleSelectSaveDirectory = () => {
     const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
     if (nativeBridge) {
       nativeBridge.postMessage({ action: 'selectSaveDirectory' });
     } else {
       handleEditPathManually();
+    }
+  };
+
+  // Request macOS Folder Access Permission
+  const handleRequestFolderPermission = () => {
+    const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
+    if (nativeBridge) {
+      nativeBridge.postMessage({ action: 'requestFolderPermission', path: saveDirectory });
+    } else {
+      handleSelectSaveDirectory();
     }
   };
 
@@ -460,20 +492,46 @@ export default function App() {
               {/* Drop Canvas */}
               <DropZone onVideoLoaded={handleVideoLoaded} />
 
-              {/* Current Configured Save Path Display (Prominently visible and persistent) */}
+              {/* Current Configured Save Path Display (Prominently visible and persistent with macOS permission application) */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
                 <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
                   <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 shrink-0">
                     <Folder className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                         当前设定的保存路径：
                       </span>
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
                         持续生效
                       </span>
+
+                      {/* macOS Folder Access Permission Application Badge */}
+                      {hasFolderPermission === true ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1" title="macOS 文件夹读写访问权限已授权">
+                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                          已授权访问
+                        </span>
+                      ) : hasFolderPermission === false ? (
+                        <button
+                          onClick={handleRequestFolderPermission}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="点击向 macOS 系统申请目标文件夹的读写访问权限"
+                        >
+                          <Key className="w-3 h-3 text-amber-500" />
+                          申请文件夹权限
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleRequestFolderPermission}
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="向 macOS 申请该目录读写权限"
+                        >
+                          <ShieldCheck className="w-3 h-3" />
+                          申请授权
+                        </button>
+                      )}
                     </div>
                     <span className="text-xs font-mono font-bold text-pink-600 dark:text-pink-400 truncate mt-0.5" title={saveDirectory}>
                       {saveDirectory || '~/Movies'}
@@ -516,8 +574,17 @@ export default function App() {
                   </button>
 
                   <button
+                    onClick={handleRequestFolderPermission}
+                    className="flex items-center gap-1 px-2.5 py-1.5 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer"
+                    title="向 macOS 申请设定保存路径的系统文件夹访问权限"
+                  >
+                    <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>申请权限</span>
+                  </button>
+
+                  <button
                     onClick={handleSelectSaveDirectory}
-                    className="flex items-center gap-1 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-1 shadow-2xs"
+                    className="flex items-center gap-1 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-0.5 shadow-2xs"
                   >
                     <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
                     <span>修改路径...</span>
@@ -612,13 +679,39 @@ export default function App() {
                     <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400">
                       <Folder className="w-4 h-4" />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                         当前设定的保存路径：
                       </span>
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
                         持续生效
                       </span>
+
+                      {/* macOS Folder Access Permission Application Badge */}
+                      {hasFolderPermission === true ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1" title="macOS 文件夹读写访问权限已授权">
+                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                          已授权访问
+                        </span>
+                      ) : hasFolderPermission === false ? (
+                        <button
+                          onClick={handleRequestFolderPermission}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="点击向 macOS 系统申请目标文件夹的读写访问权限"
+                        >
+                          <Key className="w-3 h-3 text-amber-500" />
+                          申请文件夹权限
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleRequestFolderPermission}
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="向 macOS 申请该目录读写权限"
+                        >
+                          <ShieldCheck className="w-3 h-3" />
+                          申请授权
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -671,9 +764,18 @@ export default function App() {
                     </button>
 
                     <button
+                      onClick={handleRequestFolderPermission}
+                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer text-xs"
+                      title="向 macOS 系统申请目标文件夹读写访问权限"
+                    >
+                      <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>申请权限</span>
+                    </button>
+
+                    <button
                       onClick={handleSelectSaveDirectory}
-                      className="flex items-center gap-1 px-3 py-1 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-1 shadow-2xs"
-                      title="打开 macOS 访达窗口选择目标保存目录"
+                      className="flex items-center gap-1 px-3 py-1 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-0.5 shadow-2xs"
+                      title="打开 macOS 访达窗口选择目标保存目录并授权"
                     >
                       <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
                       <span>选择目录...</span>
