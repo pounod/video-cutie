@@ -12,28 +12,15 @@ import UniformTypeIdentifiers
  *  - 原生文件拖拽、原生文件打开对话框、原生保存目录选择与访达定位
  */
 
-class MainWindow: NSWindow, NSDraggingDestination {
+class MainWindow: NSWindow {
     weak var bridgeDelegate: AppDelegate?
 
     override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
         super.init(contentRect: contentRect, styleMask: style, backing: backingStoreType, defer: flag)
-        registerForDraggedTypes([.fileURL])
-    }
-
-    func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if let types = sender.draggingPasteboard.types, types.contains(.fileURL) {
-            return .copy
-        }
-        return []
-    }
-
-    func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        let pasteboard = sender.draggingPasteboard
-        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
-            bridgeDelegate?.handleFileDropped(url: firstURL)
-            return true
-        }
-        return false
+        registerForDraggedTypes([
+            .fileURL,
+            NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        ])
     }
 }
 
@@ -42,32 +29,40 @@ class DragDroppableWebView: WKWebView {
 
     override init(frame: NSRect, configuration: WKWebViewConfiguration) {
         super.init(frame: frame, configuration: configuration)
-        registerForDraggedTypes([.fileURL])
+        registerForDraggedTypes([
+            .fileURL,
+            NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        ])
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        registerForDraggedTypes([.fileURL])
+        registerForDraggedTypes([
+            .fileURL,
+            NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        ])
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if let types = sender.draggingPasteboard.types, types.contains(.fileURL) {
-            return .copy
-        }
-        return []
+        return .copy
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if let types = sender.draggingPasteboard.types, types.contains(.fileURL) {
-            return .copy
-        }
-        return []
+        return .copy
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         let pasteboard = sender.draggingPasteboard
+        var droppedURL: URL? = nil
+
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
-            bridgeDelegate?.handleFileDropped(url: firstURL)
+            droppedURL = firstURL
+        } else if let files = pasteboard.propertyList(forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String], let firstPath = files.first {
+            droppedURL = URL(fileURLWithPath: firstPath)
+        }
+
+        if let url = droppedURL {
+            bridgeDelegate?.handleFileDropped(url: url)
             return true
         }
         return false
@@ -89,34 +84,87 @@ class LocalBundleSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
 
-        // 支持加载本地被选中的视频流，消除跨源安全阻断
+        // 支持加载本地被选中的视频流，消除跨源安全阻断并支持 HTTP 206 Range 毫秒级分片流式播放
         if url.host == "local-file" {
-            let localFilePath = url.path
+            let localFilePath = url.path.removingPercentEncoding ?? url.path
             let fileURL = URL(fileURLWithPath: localFilePath)
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 do {
-                    let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
+                    let fileHandle = try FileHandle(forReadingFrom: fileURL)
+                    defer { try? fileHandle.close() }
+
+                    let attr = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+                    let fileSize = (attr[.size] as? NSNumber)?.int64Value ?? 0
+
                     let ext = fileURL.pathExtension.lowercased()
                     var mime = "video/mp4"
                     if ext == "mov" { mime = "video/quicktime" }
                     else if ext == "webm" { mime = "video/webm" }
                     else if ext == "mkv" { mime = "video/x-matroska" }
+                    else if ext == "avi" { mime = "video/x-msvideo" }
+                    else if ext == "m4v" { mime = "video/x-m4v" }
+                    else if ext == "ts" { mime = "video/mp2t" }
 
-                    let response = HTTPURLResponse(
-                        url: url,
-                        statusCode: 200,
-                        httpVersion: "HTTP/1.1",
-                        headerFields: [
+                    let rangeHeader = urlSchemeTask.request.value(forHTTPHeaderField: "Range")
+                    if let rangeHeader = rangeHeader, rangeHeader.hasPrefix("bytes=") {
+                        let rangeSpec = String(rangeHeader.dropFirst(6))
+                        let parts = rangeSpec.components(separatedBy: "-")
+                        var start: Int64 = 0
+                        var end: Int64 = fileSize - 1
+
+                        if let s = Int64(parts[0]) {
+                            start = s
+                        }
+                        if parts.count > 1, let e = Int64(parts[1]) {
+                            end = e
+                        }
+                        if end >= fileSize {
+                            end = max(0, fileSize - 1)
+                        }
+
+                        let length = max(0, end - start + 1)
+                        try fileHandle.seek(toOffset: UInt64(start))
+                        let chunkData = fileHandle.readData(ofLength: Int(min(length, 8 * 1024 * 1024)))
+
+                        let headers: [String: String] = [
                             "Content-Type": mime,
-                            "Content-Length": "\(data.count)",
+                            "Content-Length": "\(chunkData.count)",
+                            "Content-Range": "bytes \(start)-\(start + Int64(chunkData.count) - 1)/\(fileSize)",
                             "Accept-Ranges": "bytes",
                             "Access-Control-Allow-Origin": "*"
                         ]
-                    )!
-                    urlSchemeTask.didReceive(response)
-                    urlSchemeTask.didReceive(data)
-                    urlSchemeTask.didFinish()
-                    return
+
+                        let response = HTTPURLResponse(
+                            url: url,
+                            statusCode: 206,
+                            httpVersion: "HTTP/1.1",
+                            headerFields: headers
+                        )!
+                        urlSchemeTask.didReceive(response)
+                        urlSchemeTask.didReceive(chunkData)
+                        urlSchemeTask.didFinish()
+                        return
+                    } else {
+                        // 首次请求，返回可接收范围头部及首块数据
+                        let readLen = Int(min(fileSize, 4 * 1024 * 1024))
+                        let chunkData = fileHandle.readData(ofLength: readLen)
+                        let headers: [String: String] = [
+                            "Content-Type": mime,
+                            "Content-Length": "\(fileSize)",
+                            "Accept-Ranges": "bytes",
+                            "Access-Control-Allow-Origin": "*"
+                        ]
+                        let response = HTTPURLResponse(
+                            url: url,
+                            statusCode: 200,
+                            httpVersion: "HTTP/1.1",
+                            headerFields: headers
+                        )!
+                        urlSchemeTask.didReceive(response)
+                        urlSchemeTask.didReceive(chunkData)
+                        urlSchemeTask.didFinish()
+                        return
+                    }
                 } catch {
                     urlSchemeTask.didFailWithError(error)
                     return
@@ -337,12 +385,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         let path = url.path
         let name = url.lastPathComponent
         let ext = url.pathExtension.lowercased()
-        let validExts = ["mp4", "mov", "mkv", "webm", "avi", "m4v", "flv", "ts"]
-        if validExts.contains(ext) {
-            let escapedPath = path.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-            let escapedName = name.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-            DispatchQueue.main.async {
-                self.webView.evaluateJavaScript("window.onNativeVideoFileDropped && window.onNativeVideoFileDropped(\"\(escapedPath)\", \"\(escapedName)\");", completionHandler: nil)
+        let validExts = ["mp4", "mov", "mkv", "webm", "avi", "m4v", "flv", "ts", "wmv", "3gp", "mpeg", "mpg", "m2ts", "vob", "ogv"]
+        if validExts.contains(ext) || ext.isEmpty {
+            let payload: [String: Any] = ["path": path, "name": name]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: payload),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                DispatchQueue.main.async {
+                    let js = """
+                    (function() {
+                        var data = \(jsonString);
+                        if (window.onNativeVideoFileDropped) {
+                            window.onNativeVideoFileDropped(data.path, data.name);
+                        } else if (window.onNativeVideoFileSelected) {
+                            window.onNativeVideoFileSelected(data.path, data.name);
+                        }
+                    })();
+                    """
+                    self.webView.evaluateJavaScript(js, completionHandler: { (_, err) in
+                        if let err = err {
+                            print("JS Video Drop Evaluation Error: \(err)")
+                        }
+                    })
+                }
             }
         }
     }
@@ -369,10 +433,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
                 panel.canChooseFiles = true
                 panel.canChooseDirectories = false
                 panel.allowsMultipleSelection = false
+                panel.allowsOtherFileTypes = true
                 panel.title = "选择需要裁剪的视频文件"
                 panel.prompt = "打开视频"
                 if #available(macOS 11.0, *) {
-                    panel.allowedContentTypes = [UTType.movie, UTType.video, UTType.quickTimeMovie, UTType.mpeg4Movie]
+                    panel.allowedContentTypes = [
+                        UTType.movie, 
+                        UTType.video, 
+                        UTType.quickTimeMovie, 
+                        UTType.mpeg4Movie, 
+                        UTType.audiovisualContent
+                    ]
                 }
                 if panel.runModal() == .OK, let url = panel.url {
                     self.handleFileDropped(url: url)

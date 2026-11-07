@@ -204,50 +204,95 @@ export default function App() {
   const loadNativeVideoFile = (filePath: string, fileName: string) => {
     const isCustomScheme = window.location.protocol === 'app:';
     const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-    const fileUrl = isCustomScheme ? `app://local-file${cleanPath}` : (filePath.startsWith('file://') ? filePath : `file://${filePath}`);
+    // 对路径进行安全 URI 编码以支持中文及空格，同时原生 local-file 处理器支持分片 Range 播放
+    const fileUrl = isCustomScheme 
+      ? `app://local-file${encodeURI(cleanPath)}` 
+      : (filePath.startsWith('file://') ? filePath : `file://${filePath}`);
 
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    tempVideo.src = fileUrl;
-
-    const onFinish = (w: number, h: number, d: number) => {
-      const width = w || 1920;
-      const height = h || 1080;
-      const duration = d || 60;
-      const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-      const divisor = gcd(width, height);
-      const aspect = `${width / divisor}:${height / divisor}`;
-      const ext = fileName.split('.').pop()?.toLowerCase() || 'mp4';
-
-      const meta: VideoMetadata = {
-        name: fileName,
-        filePath: filePath, // REAL ABSOLUTE PATH FOR FFmpeg!
-        size: 0,
-        duration: duration,
-        width: width,
-        height: height,
-        aspectRatio: aspect,
-        format: ext.toUpperCase(),
-        videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
-        audioCodec: 'AAC',
-        fps: 30,
-      };
-
-      handleVideoLoaded(null, fileUrl, meta);
+    const ext = fileName.split('.').pop()?.toLowerCase() || 'mp4';
+    const meta: VideoMetadata = {
+      name: fileName,
+      filePath: filePath, // REAL ABSOLUTE PATH FOR FFmpeg!
+      size: 0,
+      duration: 60, // 初始时长，主播放器加载后立即精准更新
+      width: 1920,
+      height: 1080,
+      aspectRatio: '16:9',
+      format: ext.toUpperCase(),
+      videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
+      audioCodec: 'AAC',
+      fps: 30,
     };
 
-    tempVideo.onloadedmetadata = () => {
-      onFinish(tempVideo.videoWidth, tempVideo.videoHeight, tempVideo.duration);
-    };
-    tempVideo.onerror = () => {
-      onFinish(1920, 1080, 60);
-    };
+    // 关键优化：无需等待未挂载的离屏 video 对象，立即切换至剪辑界面，确保用户拖入或选取文件有即时响应与界面变化！
+    handleVideoLoaded(null, fileUrl, meta);
   };
+
+  // 全局窗口拖拽捕获：无论拖到客户端窗口的任意位置均能立即添加视频
+  useEffect(() => {
+    const handleGlobalDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const handleGlobalDrop = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|mkv|webm|avi|m4v|flv|ts|wmv|3gp|mpeg|mpg|m2ts)$/i.test(file.name);
+        if (isVideo) {
+          const rawNativePath = (file as unknown as { path?: string }).path;
+          if (rawNativePath) {
+            loadNativeVideoFile(rawNativePath, file.name);
+          } else {
+            const objectUrl = URL.createObjectURL(file);
+            const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+            const meta: VideoMetadata = {
+              name: file.name,
+              filePath: undefined,
+              size: file.size,
+              duration: 60,
+              width: 1920,
+              height: 1080,
+              aspectRatio: '16:9',
+              format: ext.toUpperCase(),
+              videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
+              audioCodec: 'AAC',
+              fps: 30,
+            };
+            handleVideoLoaded(file, objectUrl, meta);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('dragover', handleGlobalDragOver);
+    window.addEventListener('drop', handleGlobalDrop);
+    return () => {
+      window.removeEventListener('dragover', handleGlobalDragOver);
+      window.removeEventListener('drop', handleGlobalDrop);
+    };
+  }, []);
 
   // Video event listeners
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    const handleLoadedMetadata = () => {
+      const d = video.duration;
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (d && !isNaN(d) && isFinite(d) && d > 0) {
+        setEndSeconds(d);
+        setEndTimeStr(formatSecondsToHHMMSS(d));
+        setMetadata(prev => prev ? {
+          ...prev,
+          duration: d,
+          width: w || prev.width,
+          height: h || prev.height,
+          aspectRatio: (w && h) ? `${w}:${h}` : prev.aspectRatio
+        } : null);
+      }
+    };
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
@@ -260,11 +305,13 @@ export default function App() {
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
 
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
 
     return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);

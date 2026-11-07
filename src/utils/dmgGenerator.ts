@@ -18,12 +18,12 @@ export interface DmgPackageInfo {
 export const APP_INFO: DmgPackageInfo = {
   appNameZh: '视频剪辑姬',
   appNameEn: 'Video Cutie',
-  version: '1.2.0',
-  releaseTitle: '视频剪辑姬（Video Cutie）v1.2.0',
+  version: '1.2.0-beta.6',
+  releaseTitle: '视频剪辑姬（Video Cutie）v1.2.0-beta.6',
   bundleId: 'com.videocutie.macos.app',
   minSystemVersion: '11.0 (macOS Big Sur ~ macOS 15+ Sequoia)',
   architectures: ['arm64 (Apple Silicon M1/M2/M3/M4)', 'x86_64 (Intel 64-bit)'],
-  filename: 'VideoCutie-1.2.0-Universal.dmg',
+  filename: 'VideoCutie-1.2.0-beta.6-Universal.dmg',
 };
 
 /**
@@ -127,13 +127,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号 (如 1.2.0)'
+        description: '发布版本号 (如 1.2.0-beta.6)'
         required: true
-        default: '1.2.0'
+        default: '1.2.0-beta.6'
       release_title:
         description: 'GitHub Release 标题'
         required: true
-        default: '视频剪辑姬（Video Cutie）v1.2.0'
+        default: '视频剪辑姬（Video Cutie）v1.2.0-beta.6'
       create_release:
         description: '构建完成后是否自动在 GitHub Releases 发布'
         required: true
@@ -157,7 +157,7 @@ jobs:
       - name: 安装 Node.js 运行时
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: 安装项目依赖 (配置 macOS 原生环境)
         run: |
@@ -174,17 +174,19 @@ jobs:
 
       - name: 编译原生客户端、打包内置 FFmpeg 并生成 Universal DMG
         env:
-          APP_VERSION: \${{ github.event.inputs.version || '1.2.0' }}
+          APP_VERSION: \${{ github.event.inputs.version || '1.2.0-beta.6' }}
           APP_NAME_ZH: "视频剪辑姬"
           APP_NAME_EN: "Video Cutie"
         run: |
           chmod +x ./scripts/build-dmg.sh
-          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.2.0' }}"
+          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.2.0-beta.6' }}"
 
       - name: 准备优化完成汇报 (Release Notes)
         id: release_notes
         run: |
-          if [ -f "RELEASE_REPORT_v1.2.0.md" ]; then
+          if [ -f "RELEASE_REPORT_v1.2.0-beta.6.md" ]; then
+            echo "notes_file=RELEASE_REPORT_v1.2.0-beta.6.md" >> $GITHUB_OUTPUT
+          elif [ -f "RELEASE_REPORT_v1.2.0.md" ]; then
             echo "notes_file=RELEASE_REPORT_v1.2.0.md" >> $GITHUB_OUTPUT
           elif [ -f "RELEASE_REPORT_v1.1.1.md" ]; then
             echo "notes_file=RELEASE_REPORT_v1.1.1.md" >> $GITHUB_OUTPUT

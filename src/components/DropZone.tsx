@@ -14,124 +14,27 @@ export const DropZone: React.FC<DropZoneProps> = ({ onVideoLoaded }) => {
   const processVideoFile = (file: File) => {
     setIsLoading(true);
     const objectUrl = URL.createObjectURL(file);
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    tempVideo.src = objectUrl;
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+    const rawNativePath = (file as unknown as { path?: string }).path;
 
-    tempVideo.onloadedmetadata = () => {
-      const width = tempVideo.videoWidth || 1920;
-      const height = tempVideo.videoHeight || 1080;
-      const duration = tempVideo.duration || 60;
-      const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-      const divisor = gcd(width, height);
-      const aspect = `${width / divisor}:${height / divisor}`;
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
-
-      const rawNativePath = (file as unknown as { path?: string }).path;
-      const metadata: VideoMetadata = {
-        name: file.name,
-        filePath: rawNativePath || undefined,
-        size: file.size,
-        duration: duration,
-        width: width,
-        height: height,
-        aspectRatio: aspect,
-        format: ext.toUpperCase(),
-        videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
-        audioCodec: 'AAC',
-        fps: 30,
-      };
-
-      setIsLoading(false);
-      onVideoLoaded(file, objectUrl, metadata);
+    // 立即构造初始元数据并切换界面，绝不在后台挂起阻塞用户操作
+    const metadata: VideoMetadata = {
+      name: file.name,
+      filePath: rawNativePath || undefined,
+      size: file.size,
+      duration: 60, // 初始值，由主播放器 onLoadedMetadata 精准更新
+      width: 1920,
+      height: 1080,
+      aspectRatio: '16:9',
+      format: ext.toUpperCase(),
+      videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
+      audioCodec: 'AAC',
+      fps: 30,
     };
 
-    tempVideo.onerror = () => {
-      setIsLoading(false);
-      const rawNativePath = (file as unknown as { path?: string }).path;
-      const metadata: VideoMetadata = {
-        name: file.name,
-        filePath: rawNativePath || undefined,
-        size: file.size,
-        duration: 120,
-        width: 1920,
-        height: 1080,
-        aspectRatio: '16:9',
-        format: file.name.split('.').pop()?.toUpperCase() || 'MP4',
-        videoCodec: 'H.264',
-        audioCodec: 'AAC',
-        fps: 30,
-      };
-      onVideoLoaded(file, objectUrl, metadata);
-    };
+    setIsLoading(false);
+    onVideoLoaded(file, objectUrl, metadata);
   };
-
-  const processNativeVideoPath = (filePath: string, fileName: string) => {
-    setIsLoading(true);
-    const fileUrl = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    tempVideo.src = fileUrl;
-
-    tempVideo.onloadedmetadata = () => {
-      const width = tempVideo.videoWidth || 1920;
-      const height = tempVideo.videoHeight || 1080;
-      const duration = tempVideo.duration || 60;
-      const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-      const divisor = gcd(width, height);
-      const aspect = `${width / divisor}:${height / divisor}`;
-      const ext = fileName.split('.').pop()?.toLowerCase() || 'mp4';
-
-      const metadata: VideoMetadata = {
-        name: fileName,
-        filePath: filePath,
-        size: 0,
-        duration: duration,
-        width: width,
-        height: height,
-        aspectRatio: aspect,
-        format: ext.toUpperCase(),
-        videoCodec: ext === 'mov' ? 'ProRes / H.264' : 'H.264 (AVC)',
-        audioCodec: 'AAC',
-        fps: 30,
-      };
-
-      setIsLoading(false);
-      onVideoLoaded(null, fileUrl, metadata);
-    };
-
-    tempVideo.onerror = () => {
-      setIsLoading(false);
-      const ext = fileName.split('.').pop()?.toLowerCase() || 'mp4';
-      const metadata: VideoMetadata = {
-        name: fileName,
-        filePath: filePath,
-        size: 0,
-        duration: 60,
-        width: 1920,
-        height: 1080,
-        aspectRatio: '16:9',
-        format: ext.toUpperCase(),
-        videoCodec: 'H.264',
-        audioCodec: 'AAC',
-        fps: 30,
-      };
-      onVideoLoaded(null, fileUrl, metadata);
-    };
-  };
-
-  useEffect(() => {
-    const win = window as unknown as {
-      onNativeVideoFileDropped?: (path: string, name: string) => void;
-      onNativeVideoFileSelected?: (path: string, name: string) => void;
-    };
-    win.onNativeVideoFileDropped = (path: string, name: string) => {
-      processNativeVideoPath(path, name);
-    };
-    win.onNativeVideoFileSelected = (path: string, name: string) => {
-      processNativeVideoPath(path, name);
-    };
-  }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

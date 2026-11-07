@@ -59,7 +59,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <div className="w-full bg-neutral-50 dark:bg-neutral-800/60 rounded-xl p-3 border border-neutral-100 dark:border-neutral-800 text-left text-xs space-y-1.5">
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              <span>「视频剪辑姬（Video Cutie）v1.2.0」</span>
+              <span>「视频剪辑姬（Video Cutie）v{APP_INFO.version}」</span>
             </div>
             <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-pink-500 shrink-0" />
