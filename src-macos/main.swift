@@ -344,14 +344,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
 
     // 运行客户端内置 FFmpeg 引擎并进行严格路径与安全防护，杜绝崩溃
     private func runBundledFFmpeg(input: String, output: String, start: String, end: String) {
-        var finalOutput = output
         let userHome = FileManager.default.homeDirectoryForCurrentUser.path
         let defaultSaveDir = (userHome as NSString).appendingPathComponent("Movies")
 
+        // 彻底展开 ~ 波浪号并标准化路径，防止路径错位或生成嵌套无效路径
+        var finalOutput = (output as NSString).expandingTildeInPath.trimmingCharacters(in: .whitespacesAndNewlines)
         if finalOutput.isEmpty {
             finalOutput = (defaultSaveDir as NSString).appendingPathComponent("video_trimmed.mp4")
         } else if !finalOutput.hasPrefix("/") {
             finalOutput = (defaultSaveDir as NSString).appendingPathComponent(finalOutput)
+        }
+        finalOutput = (finalOutput as NSString).standardizingPath
+
+        // 如果用户指定的路径是一个已有目录，自动在目录后追加剪辑文件名
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: finalOutput, isDirectory: &isDir), isDir.boolValue {
+            let inputFileName = URL(fileURLWithPath: input).deletingPathExtension().lastPathComponent
+            let inputExt = URL(fileURLWithPath: input).pathExtension
+            let cleanExt = inputExt.isEmpty ? "mp4" : inputExt
+            let startTag = start.replacingOccurrences(of: ":", with: "")
+            let endTag = end.replacingOccurrences(of: ":", with: "")
+            let generatedName = "\(inputFileName)_cut_\(startTag)_\(endTag).\(cleanExt)"
+            finalOutput = (finalOutput as NSString).appendingPathComponent(generatedName)
         }
 
         // 严格检查源视频文件是否存在
@@ -441,12 +455,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
 
             DispatchQueue.main.async {
-                if exitCode == 0 {
+                if exitCode == 0 && FileManager.default.fileExists(atPath: finalOutput) {
                     let escapedOut = finalOutput.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
                     self.webView.evaluateJavaScript("window.onNativeTrimComplete && window.onNativeTrimComplete(true, \"\(escapedOut)\", \"\");", completionHandler: nil)
                 } else {
                     let summary = errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let errorMsg = summary.isEmpty ? "FFmpeg 剪辑异常 (退出码 \(exitCode))" : summary
+                    let errorMsg = summary.isEmpty ? "未能将剪辑文件保存至指定路径: \(finalOutput)" : summary
                     self.notifyTrimError(errorMsg)
                 }
             }

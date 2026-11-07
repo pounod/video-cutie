@@ -52,9 +52,24 @@ export default function App() {
   const [startSeconds, setStartSeconds] = useState<number>(0);
   const [endSeconds, setEndSeconds] = useState<number>(0);
 
-  // Save Path State
-  const [saveDirectory, setSaveDirectory] = useState<string>('~/Movies');
+  // Save Path State - Persisted in localStorage so it stays active unless modified
+  const [saveDirectory, setSaveDirectory] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('videocutie_save_directory');
+      if (saved && saved.trim()) return saved.trim();
+    }
+    return '~/Movies';
+  });
   const [defaultPaths, setDefaultPaths] = useState<{ movies?: string; downloads?: string; desktop?: string }>({});
+
+  const updateSaveDirectory = (newPath: string) => {
+    if (!newPath || !newPath.trim()) return;
+    const cleanPath = newPath.trim();
+    setSaveDirectory(cleanPath);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('videocutie_save_directory', cleanPath);
+    }
+  };
 
   // In-App Trimming & Export Progress State
   const [isExporting, setIsExporting] = useState(false);
@@ -90,7 +105,7 @@ export default function App() {
         const finalPath = outputPath || '';
         setLastExportedPath(finalPath);
         setExportErrorMessage(null);
-        setExportSuccessMessage(finalPath ? `🎉 无损剪辑成功！已保存至：${finalPath}` : '🎉 无损视频剪辑成功！原视频参数已完整保留。');
+        setExportSuccessMessage(finalPath ? `🎉 无损剪辑成功！已保存至设定的路径：${finalPath}` : '🎉 无损视频剪辑成功！已保存至设定的目标文件夹。');
       } else {
         setExportSuccessMessage(null);
         setExportErrorMessage(`⚠️ 原生剪辑导出失败: ${errorMsg || '请检查源文件权限或格式。'}`);
@@ -99,15 +114,19 @@ export default function App() {
 
     win.onSaveDirectorySelected = (path: string) => {
       if (path) {
-        setSaveDirectory(path);
+        updateSaveDirectory(path);
       }
     };
 
     win.onDefaultPathsReceived = (paths) => {
       if (paths) {
         setDefaultPaths(paths);
-        if (paths.movies) {
-          setSaveDirectory(paths.movies);
+        // Only set default if user hasn't configured a custom directory yet
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('videocutie_save_directory') : null;
+        if (!saved && paths.movies) {
+          updateSaveDirectory(paths.movies);
+        } else if (saved === '~/Movies' && paths.movies) {
+          updateSaveDirectory(paths.movies);
         }
       }
     };
@@ -170,14 +189,7 @@ export default function App() {
     setExportSuccessMessage(null);
     setExportErrorMessage(null);
     setLastExportedPath(null);
-
-    // If source file has a full path, automatically suggest its folder as default save path
-    if (meta.filePath && meta.filePath.includes('/')) {
-      const sourceFolder = meta.filePath.substring(0, meta.filePath.lastIndexOf('/'));
-      if (sourceFolder) {
-        setSaveDirectory(sourceFolder);
-      }
-    }
+    // 保持用户设定的保存路径不变（持久生效，除非用户手动点击再次修改）
   };
 
   // Play / Pause Toggle
@@ -245,16 +257,21 @@ export default function App() {
     setLastExportedPath(null);
   };
 
-  // Select Save Directory
+  // Select Save Directory (Native Open Panel)
   const handleSelectSaveDirectory = () => {
     const nativeBridge = (window as unknown as { webkit?: { messageHandlers?: { nativeBridge?: { postMessage: (msg: unknown) => void } } } }).webkit?.messageHandlers?.nativeBridge;
     if (nativeBridge) {
       nativeBridge.postMessage({ action: 'selectSaveDirectory' });
     } else {
-      const custom = window.prompt('请输入导出的目标保存文件夹名称或路径:', saveDirectory);
-      if (custom && custom.trim()) {
-        setSaveDirectory(custom.trim());
-      }
+      handleEditPathManually();
+    }
+  };
+
+  // Edit Path Manually (Prompt input)
+  const handleEditPathManually = () => {
+    const custom = window.prompt('修改视频保存文件夹路径 (一直有效，除非再次修改):', saveDirectory);
+    if (custom && custom.trim()) {
+      updateSaveDirectory(custom.trim());
     }
   };
 
@@ -273,7 +290,8 @@ export default function App() {
   const baseName = dotIdx > 0 ? rawFileName.substring(0, dotIdx) : rawFileName;
   const extension = dotIdx > 0 ? rawFileName.substring(dotIdx) : '.mp4';
   const plannedOutputFileName = `${baseName}_cut_${startTimeStr.replace(/:/g, '')}_${endTimeStr.replace(/:/g, '')}${extension}`;
-  const fullPlannedOutputPath = `${saveDirectory.replace(/\/$/, '')}/${plannedOutputFileName}`;
+  const cleanSaveDir = (saveDirectory && saveDirectory.trim()) || defaultPaths.movies || '~/Movies';
+  const fullPlannedOutputPath = `${cleanSaveDir.replace(/\/+$/, '')}/${plannedOutputFileName}`;
 
   // Execute in-app trim export
   const handleInAppTrimExport = () => {
@@ -356,6 +374,71 @@ export default function App() {
 
               {/* Drop Canvas */}
               <DropZone onVideoLoaded={handleVideoLoaded} />
+
+              {/* Current Configured Save Path Display (Prominently visible and persistent) */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
+                <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
+                  <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 shrink-0">
+                    <Folder className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                        当前设定的保存路径：
+                      </span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                        持续生效
+                      </span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-pink-600 dark:text-pink-400 truncate mt-0.5" title={saveDirectory}>
+                      {saveDirectory || '~/Movies'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end overflow-x-auto text-xs">
+                  <button
+                    onClick={() => updateSaveDirectory(defaultPaths.movies || '~/Movies')}
+                    className={`px-2.5 py-1.5 font-medium rounded-lg transition-colors cursor-pointer ${
+                      saveDirectory.includes('Movies')
+                        ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
+                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
+                    }`}
+                  >
+                    🎬 影片
+                  </button>
+
+                  <button
+                    onClick={() => updateSaveDirectory(defaultPaths.downloads || '~/Downloads')}
+                    className={`px-2.5 py-1.5 font-medium rounded-lg transition-colors cursor-pointer ${
+                      saveDirectory.includes('Downloads')
+                        ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
+                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
+                    }`}
+                  >
+                    📥 下载
+                  </button>
+
+                  <button
+                    onClick={() => updateSaveDirectory(defaultPaths.desktop || '~/Desktop')}
+                    className={`px-2.5 py-1.5 font-medium rounded-lg transition-colors cursor-pointer ${
+                      saveDirectory.includes('Desktop')
+                        ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
+                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
+                    }`}
+                  >
+                    🖥️ 桌面
+                  </button>
+
+                  <button
+                    onClick={handleSelectSaveDirectory}
+                    className="flex items-center gap-1 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-1 shadow-2xs"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
+                    <span>修改路径...</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -437,23 +520,32 @@ export default function App() {
                 />
               </div>
 
-              {/* Row 2: Save Directory Section */}
-              <div className="flex flex-col gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+              {/* Row 2: Save Directory Section (Prominently visible and persistent) */}
+              <div className="flex flex-col gap-2.5 pt-3 border-t border-neutral-100 dark:border-neutral-800">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                    <Folder className="w-3.5 h-3.5 text-pink-500" />
-                    <span>剪辑完成视频保存路径</span>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400">
+                      <Folder className="w-4 h-4" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                        当前设定的保存路径：
+                      </span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                        持续生效
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Preset directory chips */}
+                  {/* Preset directory chips & change button */}
                   <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto text-[11px]">
                     {metadata?.filePath && (
                       <button
                         onClick={() => {
                           const folder = metadata.filePath?.substring(0, metadata.filePath.lastIndexOf('/'));
-                          if (folder) setSaveDirectory(folder);
+                          if (folder) updateSaveDirectory(folder);
                         }}
-                        className="px-2 py-1 font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-pink-50 dark:hover:bg-pink-950/40 hover:text-pink-600 dark:hover:text-pink-400 rounded-md transition-colors cursor-pointer"
+                        className="px-2.5 py-1 font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-pink-50 dark:hover:bg-pink-950/40 hover:text-pink-600 dark:hover:text-pink-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-pink-200 dark:hover:border-pink-800"
                         title="保存至源视频同一目录"
                       >
                         📁 源视频目录
@@ -461,10 +553,10 @@ export default function App() {
                     )}
 
                     <button
-                      onClick={() => setSaveDirectory(defaultPaths.movies || '~/Movies')}
-                      className={`px-2 py-1 font-medium rounded-md transition-colors cursor-pointer ${
+                      onClick={() => updateSaveDirectory(defaultPaths.movies || '~/Movies')}
+                      className={`px-2.5 py-1 font-medium rounded-lg transition-colors cursor-pointer ${
                         saveDirectory.includes('Movies')
-                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold'
+                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
                           : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
                       }`}
                     >
@@ -472,10 +564,10 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => setSaveDirectory(defaultPaths.downloads || '~/Downloads')}
-                      className={`px-2 py-1 font-medium rounded-md transition-colors cursor-pointer ${
+                      onClick={() => updateSaveDirectory(defaultPaths.downloads || '~/Downloads')}
+                      className={`px-2.5 py-1 font-medium rounded-lg transition-colors cursor-pointer ${
                         saveDirectory.includes('Downloads')
-                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold'
+                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
                           : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
                       }`}
                     >
@@ -483,10 +575,10 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => setSaveDirectory(defaultPaths.desktop || '~/Desktop')}
-                      className={`px-2 py-1 font-medium rounded-md transition-colors cursor-pointer ${
+                      onClick={() => updateSaveDirectory(defaultPaths.desktop || '~/Desktop')}
+                      className={`px-2.5 py-1 font-medium rounded-lg transition-colors cursor-pointer ${
                         saveDirectory.includes('Desktop')
-                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold'
+                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
                           : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
                       }`}
                     >
@@ -495,20 +587,37 @@ export default function App() {
 
                     <button
                       onClick={handleSelectSaveDirectory}
-                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/80 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-md transition-colors cursor-pointer ml-1"
+                      className="flex items-center gap-1 px-3 py-1 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-1 shadow-2xs"
+                      title="打开 macOS 访达窗口选择目标保存目录"
                     >
-                      <FolderOpen className="w-3 h-3 text-pink-500" />
+                      <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
                       <span>选择目录...</span>
+                    </button>
+
+                    <button
+                      onClick={handleEditPathManually}
+                      className="px-2 py-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-[10px]"
+                      title="手动输入或粘贴保存路径"
+                    >
+                      修改路径
                     </button>
                   </div>
                 </div>
 
                 {/* Path input & preview */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-850/70 rounded-lg border border-neutral-200/60 dark:border-neutral-800 text-xs font-mono text-neutral-800 dark:text-neutral-200 truncate">
-                  <span className="text-neutral-400 select-none">输出:</span>
-                  <span className="text-pink-600 dark:text-pink-400 font-medium truncate flex-1">
-                    {fullPlannedOutputPath}
-                  </span>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3.5 py-2 bg-neutral-50 dark:bg-neutral-850/80 rounded-lg border border-neutral-200/70 dark:border-neutral-800 text-xs font-mono">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                    <span className="text-neutral-400 select-none shrink-0 font-sans text-[11px]">设定保存目录:</span>
+                    <span className="text-pink-600 dark:text-pink-400 font-bold truncate" title={saveDirectory}>
+                      {saveDirectory || '~/Movies'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0 flex-1 truncate sm:justify-end border-t sm:border-t-0 sm:border-l border-neutral-200/60 dark:border-neutral-800 pt-1 sm:pt-0 sm:pl-3">
+                    <span className="text-neutral-400 select-none shrink-0 font-sans text-[11px]">预计导出文件:</span>
+                    <span className="text-neutral-700 dark:text-neutral-300 font-medium truncate" title={plannedOutputFileName}>
+                      {plannedOutputFileName}
+                    </span>
+                  </div>
                 </div>
               </div>
 

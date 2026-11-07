@@ -27,8 +27,10 @@ export const DropZone: React.FC<DropZoneProps> = ({ onVideoLoaded }) => {
       const aspect = `${width / divisor}:${height / divisor}`;
       const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
 
+      const rawNativePath = (file as unknown as { path?: string }).path;
       const metadata: VideoMetadata = {
         name: file.name,
+        filePath: rawNativePath || undefined,
         size: file.size,
         duration: duration,
         width: width,
@@ -46,8 +48,10 @@ export const DropZone: React.FC<DropZoneProps> = ({ onVideoLoaded }) => {
 
     tempVideo.onerror = () => {
       setIsLoading(false);
+      const rawNativePath = (file as unknown as { path?: string }).path;
       const metadata: VideoMetadata = {
         name: file.name,
+        filePath: rawNativePath || undefined,
         size: file.size,
         duration: 120,
         width: 1920,
