@@ -3,7 +3,7 @@ import WebKit
 import UniformTypeIdentifiers
 
 /**
- * 视频剪辑姬（Video Cutie）v1.2.0 - macOS 原生客户端主入口
+ * 视频剪辑姬（Video Cutie）v1.2.0-beta.7 - macOS 原生客户端主入口
  * 架构: Universal Binary (Apple Silicon arm64 + Intel x86_64)
  * 特性:
  *  - 原生 Cocoa 窗口 + WebKit WKWebView 独立客户端界面 (无浏览器依赖、无多层嵌套)
@@ -599,32 +599,46 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             }
         }
 
-        // 定位 App Bundle 内置或系统的 FFmpeg
-        var ffmpegPath: String? = nil
-        let candidatePaths = [
-            Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/ffmpeg").path,
+        // 收集所有潜在的 FFmpeg 可执行候选路径
+        var candidatePaths: [String] = []
+        let bundledPath = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/ffmpeg").path
+        if FileManager.default.isExecutableFile(atPath: bundledPath) {
+            candidatePaths.append(bundledPath)
+        }
+
+        let systemPaths = [
             "/opt/homebrew/bin/ffmpeg",
             "/usr/local/bin/ffmpeg",
             "/usr/bin/ffmpeg"
         ]
-        for p in candidatePaths {
-            if FileManager.default.isExecutableFile(atPath: p) {
-                ffmpegPath = p
-                break
+        for sp in systemPaths {
+            if !candidatePaths.contains(sp) && FileManager.default.isExecutableFile(atPath: sp) {
+                candidatePaths.append(sp)
             }
         }
 
-        guard let binPath = ffmpegPath else {
-            let msg = "未检测到可用的内置 FFmpeg 引擎。请检查客户端完整性。"
+        // 尝试解析 PATH 环境变量中的 ffmpeg
+        let whichProcess = Process()
+        whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        whichProcess.arguments = ["ffmpeg"]
+        let whichPipe = Pipe()
+        whichProcess.standardOutput = whichPipe
+        if (try? whichProcess.run()) != nil {
+            whichProcess.waitUntilExit()
+            let whichData = whichPipe.fileHandleForReading.readDataToEndOfFile()
+            if let whichResult = String(data: whichData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !whichResult.isEmpty && !candidatePaths.contains(whichResult) && FileManager.default.isExecutableFile(atPath: whichResult) {
+                candidatePaths.append(whichResult)
+            }
+        }
+
+        if candidatePaths.isEmpty {
+            let msg = "未检测到可用的内置或系统 FFmpeg 引擎。请检查客户端完整性。"
             DispatchQueue.main.async {
                 self.notifyTrimError(msg)
             }
             return
         }
-
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: binPath)
-        task.currentDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
 
         var arguments = ["-i", input]
         if !start.isEmpty && start != "00:00:00" {
@@ -640,39 +654,56 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
             "-y",
             finalOutput
         ])
-        task.arguments = arguments
 
-        let errorPipe = Pipe()
-        task.standardError = errorPipe
-        task.standardOutput = Pipe()
+        // 针对不同 CPU 架构环境 (Apple Silicon / Intel) 进行多级候选探测与自动容错
+        var activeTask: Process? = nil
+        var errorPipe: Pipe? = nil
+        var lastError: Error? = nil
 
-        var didLaunch = false
-        do {
-            try task.run()
-            didLaunch = true
-        } catch {
-            let msg = "FFmpeg 启动失败: \(error.localizedDescription)"
+        for binPath in candidatePaths {
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: binPath)
+            task.currentDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            task.arguments = arguments
+
+            let ep = Pipe()
+            task.standardError = ep
+            task.standardOutput = Pipe()
+
+            do {
+                try task.run()
+                activeTask = task
+                errorPipe = ep
+                break // 成功启动，跳出候选探测
+            } catch {
+                lastError = error
+                // 遇到 CPU 架构不匹配 (Bad CPU type / EBADARCH) 或权限异常时，平滑回退至下一候选
+                continue
+            }
+        }
+
+        guard let task = activeTask, let pipe = errorPipe else {
+            let detail = lastError?.localizedDescription ?? "可执行文件中的CPU类型不正确或缺少执行权限"
+            let msg = "FFmpeg 启动失败: \(detail)。已尝试探测候选: \(candidatePaths.joined(separator: ", "))"
             DispatchQueue.main.async {
                 self.notifyTrimError(msg)
             }
             return
         }
 
-        if didLaunch {
-            task.waitUntilExit()
-            let exitCode = task.terminationStatus
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+        task.waitUntilExit()
+        let exitCode = task.terminationStatus
+        let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
 
-            DispatchQueue.main.async {
-                if exitCode == 0 && FileManager.default.fileExists(atPath: finalOutput) {
-                    let escapedOut = finalOutput.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-                    self.webView.evaluateJavaScript("window.onNativeTrimComplete && window.onNativeTrimComplete(true, \"\(escapedOut)\", \"\");", completionHandler: nil)
-                } else {
-                    let summary = errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let errorMsg = summary.isEmpty ? "未能将剪辑文件保存至指定路径: \(finalOutput)" : summary
-                    self.notifyTrimError(errorMsg)
-                }
+        DispatchQueue.main.async {
+            if exitCode == 0 && FileManager.default.fileExists(atPath: finalOutput) {
+                let escapedOut = finalOutput.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+                self.webView.evaluateJavaScript("window.onNativeTrimComplete && window.onNativeTrimComplete(true, \"\(escapedOut)\", \"\");", completionHandler: nil)
+            } else {
+                let summary = errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+                let errorMsg = summary.isEmpty ? "未能将剪辑文件保存至指定路径: \(finalOutput)" : summary
+                self.notifyTrimError(errorMsg)
             }
         }
     }

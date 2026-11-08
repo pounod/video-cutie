@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 视频剪辑姬（Video Cutie）v1.2.0-beta.6 - macOS Universal DMG 打包脚本
+# 视频剪辑姬（Video Cutie）v1.2.0-beta.7 - macOS Universal DMG 打包脚本
 # 适用: GitHub Actions macOS 运行器 或 本地 macOS 终端
 # 架构: Universal Binary (Apple Silicon M1/M2/M3/M4 arm64 + Intel x86_64)
 # 特性: 内置打包 FFmpeg + 原生 macOS Cocoa 客户端窗口 + 无黑边圆角扁平图标
@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-1.2.0-beta.6}"
+VERSION="${1:-1.2.0-beta.7}"
 APP_NAME_EN="VideoCutie"
 APP_DISPLAY_NAME="视频剪辑姬"
 OUTPUT_DIR="dist-dmg"
@@ -126,28 +126,64 @@ if command -v iconutil >/dev/null 2>&1 && command -v sips >/dev/null 2>&1 && [ -
     echo "✅ 成功根据附件图标为应用生成最新标准 AppIcon.icns！"
 fi
 
-# 5. 打包内置 FFmpeg 二进制 (Requirement: 将 FFmpeg 打包进客户端)
-echo "📦 正在将 FFmpeg 原生引擎打包进客户端 (Contents/MacOS/ffmpeg)..."
-FFMPEG_SRC=""
-if command -v ffmpeg >/dev/null 2>&1; then
-    FFMPEG_SRC="$(command -v ffmpeg)"
-elif [ -x "/opt/homebrew/bin/ffmpeg" ]; then
-    FFMPEG_SRC="/opt/homebrew/bin/ffmpeg"
-elif [ -x "/usr/local/bin/ffmpeg" ]; then
-    FFMPEG_SRC="/usr/local/bin/ffmpeg"
+# 5. 打包内置 FFmpeg 二进制 (Universal Binary: arm64 + x86_64 双架构原生兼容)
+echo "📦 正在将 Universal (arm64 + x86_64) 双架构 FFmpeg 原生引擎打包进客户端..."
+mkdir -p /tmp/ffmpeg-bundle
+FFMPEG_TARGET="${APP_DIR}/Contents/MacOS/ffmpeg"
+UNIVERSAL_FFMPEG_READY=false
+
+# 检查是否已有预先合成的 Universal FFmpeg
+if [ -f "build/ffmpeg-universal/ffmpeg" ] && [ -x "build/ffmpeg-universal/ffmpeg" ]; then
+    echo "💎 检测到预编译 Universal FFmpeg 二进制，正在集成进 App Bundle..."
+    cp -L "build/ffmpeg-universal/ffmpeg" "$FFMPEG_TARGET"
+    chmod +x "$FFMPEG_TARGET"
+    UNIVERSAL_FFMPEG_READY=true
 fi
 
-if [ -n "${FFMPEG_SRC:-}" ] && [ -f "${FFMPEG_SRC:-}" ]; then
-    echo "🚀 找到原生 FFmpeg: [${FFMPEG_SRC}]，正在复制到 App Bundle..."
-    cp -L "${FFMPEG_SRC}" "${APP_DIR}/Contents/MacOS/ffmpeg"
-    chmod +x "${APP_DIR}/Contents/MacOS/ffmpeg"
-    echo "✅ 已成功将 FFmpeg 内置到客户端！"
-else
-    echo "⚠️ 提示: 当前系统未预装 ffmpeg 二进制，写入内置 FFmpeg 代理引导器..."
-    cat << 'EOF' > "${APP_DIR}/Contents/MacOS/ffmpeg"
+# 如果尚无 Universal FFmpeg，尝试从官方静态发布源下载 arm64 与 x86_64 独立静态版本并通过 lipo 合成
+if [ "$UNIVERSAL_FFMPEG_READY" = false ] && command -v lipo >/dev/null 2>&1; then
+    echo "🌐 正在获取 macOS arm64 架构静态 FFmpeg..."
+    curl -fsSL --retry 3 --connect-timeout 8 "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-darwin-arm64.gz" | gzip -d > /tmp/ffmpeg-bundle/ffmpeg-arm64 2>/dev/null && chmod +x /tmp/ffmpeg-bundle/ffmpeg-arm64 || true
+
+    echo "🌐 正在获取 macOS x86_64 架构静态 FFmpeg..."
+    curl -fsSL --retry 3 --connect-timeout 8 "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-darwin-x64.gz" | gzip -d > /tmp/ffmpeg-bundle/ffmpeg-x64 2>/dev/null && chmod +x /tmp/ffmpeg-bundle/ffmpeg-x64 || true
+
+    if [ -f "/tmp/ffmpeg-bundle/ffmpeg-arm64" ] && [ -f "/tmp/ffmpeg-bundle/ffmpeg-x64" ]; then
+        echo "🔗 使用 lipo 合并生成 Universal (arm64 + x86_64) 纯静态 FFmpeg 二进制..."
+        if lipo -create /tmp/ffmpeg-bundle/ffmpeg-arm64 /tmp/ffmpeg-bundle/ffmpeg-x64 -output "$FFMPEG_TARGET" 2>/dev/null; then
+            chmod +x "$FFMPEG_TARGET"
+            UNIVERSAL_FFMPEG_READY=true
+            echo "✅ 成功构建 Universal (arm64 + x86_64) 静态双架构 FFmpeg！"
+        fi
+    fi
+fi
+
+# 本地离线或网络受限兜底策略
+if [ "$UNIVERSAL_FFMPEG_READY" = false ]; then
+    FFMPEG_SRC=""
+    if command -v ffmpeg >/dev/null 2>&1; then
+        FFMPEG_SRC="$(command -v ffmpeg)"
+    elif [ -x "/opt/homebrew/bin/ffmpeg" ]; then
+        FFMPEG_SRC="/opt/homebrew/bin/ffmpeg"
+    elif [ -x "/usr/local/bin/ffmpeg" ]; then
+        FFMPEG_SRC="/usr/local/bin/ffmpeg"
+    fi
+
+    if [ -n "${FFMPEG_SRC:-}" ] && [ -f "${FFMPEG_SRC:-}" ]; then
+        echo "🚀 使用本地系统原生 FFmpeg: [${FFMPEG_SRC}] 写入客户端..."
+        cp -L "${FFMPEG_SRC}" "$FFMPEG_TARGET"
+        chmod +x "$FFMPEG_TARGET"
+    else
+        echo "⚠️ 提示: 当前系统未预装 ffmpeg 二进制，写入多架构智能代理引导器..."
+        cat << 'EOF' > "$FFMPEG_TARGET"
 #!/usr/bin/env bash
-# Bundled FFmpeg Fallback Proxy
-if [ -x "/opt/homebrew/bin/ffmpeg" ]; then
+# Bundled FFmpeg Multi-Arch Intelligent Proxy
+ARCH="$(uname -m)"
+if [ "$ARCH" = "arm64" ] && [ -x "/opt/homebrew/bin/ffmpeg" ]; then
+    exec "/opt/homebrew/bin/ffmpeg" "$@"
+elif [ "$ARCH" = "x86_64" ] && [ -x "/usr/local/bin/ffmpeg" ]; then
+    exec "/usr/local/bin/ffmpeg" "$@"
+elif [ -x "/opt/homebrew/bin/ffmpeg" ]; then
     exec "/opt/homebrew/bin/ffmpeg" "$@"
 elif [ -x "/usr/local/bin/ffmpeg" ]; then
     exec "/usr/local/bin/ffmpeg" "$@"
@@ -158,7 +194,8 @@ else
     exit 127
 fi
 EOF
-    chmod +x "${APP_DIR}/Contents/MacOS/ffmpeg"
+        chmod +x "$FFMPEG_TARGET"
+    fi
 fi
 
 # 6. 生成 macOS 原生客户端可执行文件 (独立客户端界面)
