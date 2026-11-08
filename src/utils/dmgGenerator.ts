@@ -18,12 +18,12 @@ export interface DmgPackageInfo {
 export const APP_INFO: DmgPackageInfo = {
   appNameZh: '视频剪辑姬',
   appNameEn: 'Video Cutie',
-  version: '1.2.0-beta.7',
-  releaseTitle: '视频剪辑姬（Video Cutie）v1.2.0-beta.7',
+  version: '1.2.0',
+  releaseTitle: '视频剪辑姬（Video Cutie）v1.2.0',
   bundleId: 'com.videocutie.macos.app',
   minSystemVersion: '11.0 (macOS Big Sur ~ macOS 15+ Sequoia)',
   architectures: ['arm64 (Apple Silicon M1/M2/M3/M4)', 'x86_64 (Intel 64-bit)'],
-  filename: 'VideoCutie-1.2.0-beta.7-Universal.dmg',
+  filename: 'VideoCutie-1.2.0-Universal.dmg',
 };
 
 /**
@@ -127,18 +127,23 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号 (如 1.2.0-beta.7)'
+        description: '发布版本号 (如 1.2.0)'
         required: true
-        default: '1.2.0-beta.7'
+        default: '1.2.0'
       release_title:
         description: 'GitHub Release 标题'
         required: true
-        default: '视频剪辑姬（Video Cutie）v1.2.0-beta.7'
+        default: '视频剪辑姬（Video Cutie）v1.2.0'
       create_release:
         description: '构建完成后是否自动在 GitHub Releases 发布'
         required: true
         type: boolean
         default: true
+      prerelease:
+        description: '是否发布为 Pre-release 预发布版本'
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
@@ -188,12 +193,12 @@ jobs:
 
       - name: 编译原生客户端、打包内置 FFmpeg 并生成 Universal DMG
         env:
-          APP_VERSION: \${{ github.event.inputs.version || '1.2.0-beta.7' }}
+          APP_VERSION: \${{ github.event.inputs.version || '1.2.0' }}
           APP_NAME_ZH: "视频剪辑姬"
           APP_NAME_EN: "Video Cutie"
         run: |
           chmod +x ./scripts/build-dmg.sh
-          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.2.0-beta.7' }}"
+          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.2.0' }}"
 
       - name: 准备优化完成汇报 (Release Notes)
         id: release_notes

@@ -3,7 +3,7 @@ import WebKit
 import UniformTypeIdentifiers
 
 /**
- * 视频剪辑姬（Video Cutie）v1.2.0-beta.7 - macOS 原生客户端主入口
+ * 视频剪辑姬（Video Cutie）v1.2.0 - macOS 原生客户端主入口
  * 架构: Universal Binary (Apple Silicon arm64 + Intel x86_64)
  * 特性:
  *  - 原生 Cocoa 窗口 + WebKit WKWebView 独立客户端界面 (无浏览器依赖、无多层嵌套)

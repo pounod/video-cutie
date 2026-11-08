@@ -586,55 +586,25 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end overflow-x-auto text-xs">
-                  <button
-                    onClick={() => updateSaveDirectory(defaultPaths.movies || '~/Movies')}
-                    className={`px-2.5 py-1.5 font-medium rounded-lg transition-colors cursor-pointer ${
-                      saveDirectory.includes('Movies')
-                        ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
-                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
-                    }`}
-                  >
-                    🎬 影片
-                  </button>
-
-                  <button
-                    onClick={() => updateSaveDirectory(defaultPaths.downloads || '~/Downloads')}
-                    className={`px-2.5 py-1.5 font-medium rounded-lg transition-colors cursor-pointer ${
-                      saveDirectory.includes('Downloads')
-                        ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
-                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
-                    }`}
-                  >
-                    📥 下载
-                  </button>
-
-                  <button
-                    onClick={() => updateSaveDirectory(defaultPaths.desktop || '~/Desktop')}
-                    className={`px-2.5 py-1.5 font-medium rounded-lg transition-colors cursor-pointer ${
-                      saveDirectory.includes('Desktop')
-                        ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
-                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
-                    }`}
-                  >
-                    🖥️ 桌面
-                  </button>
-
-                  <button
-                    onClick={handleRequestFolderPermission}
-                    className="flex items-center gap-1 px-2.5 py-1.5 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer"
-                    title="向 macOS 申请设定保存路径的系统文件夹访问权限"
-                  >
-                    <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>申请权限</span>
-                  </button>
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end overflow-x-auto text-xs">
+                  {hasFolderPermission !== true && (
+                    <button
+                      onClick={handleRequestFolderPermission}
+                      className="flex items-center gap-1 px-2.5 py-1.5 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer"
+                      title="向 macOS 申请设定保存路径的系统文件夹访问权限"
+                    >
+                      <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>申请权限</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={handleSelectSaveDirectory}
-                    className="flex items-center gap-1 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-0.5 shadow-2xs"
+                    className="flex items-center gap-1.5 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-300/80 dark:border-neutral-700 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                    title="选择保存目录"
                   >
                     <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
-                    <span>修改路径...</span>
+                    <span>选择目录...</span>
                   </button>
                 </div>
               </div>
@@ -762,78 +732,39 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Preset directory chips & change button */}
-                  <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto text-[11px]">
+                  {/* Action button */}
+                  <div className="flex items-center gap-2 shrink-0 text-xs">
                     {metadata?.filePath && (
                       <button
                         onClick={() => {
                           const folder = metadata.filePath?.substring(0, metadata.filePath.lastIndexOf('/'));
                           if (folder) updateSaveDirectory(folder);
                         }}
-                        className="px-2.5 py-1 font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-pink-50 dark:hover:bg-pink-950/40 hover:text-pink-600 dark:hover:text-pink-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-pink-200 dark:hover:border-pink-800"
+                        className="px-2.5 py-1 font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-pink-50 dark:hover:bg-pink-950/40 hover:text-pink-600 dark:hover:text-pink-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-pink-200 dark:hover:border-pink-800 text-[11px]"
                         title="保存至源视频同一目录"
                       >
                         📁 源视频目录
                       </button>
                     )}
 
-                    <button
-                      onClick={() => updateSaveDirectory(defaultPaths.movies || '~/Movies')}
-                      className={`px-2.5 py-1 font-medium rounded-lg transition-colors cursor-pointer ${
-                        saveDirectory.includes('Movies')
-                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
-                          : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
-                      }`}
-                    >
-                      🎬 影片
-                    </button>
-
-                    <button
-                      onClick={() => updateSaveDirectory(defaultPaths.downloads || '~/Downloads')}
-                      className={`px-2.5 py-1 font-medium rounded-lg transition-colors cursor-pointer ${
-                        saveDirectory.includes('Downloads')
-                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
-                          : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
-                      }`}
-                    >
-                      📥 下载
-                    </button>
-
-                    <button
-                      onClick={() => updateSaveDirectory(defaultPaths.desktop || '~/Desktop')}
-                      className={`px-2.5 py-1 font-medium rounded-lg transition-colors cursor-pointer ${
-                        saveDirectory.includes('Desktop')
-                          ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 font-bold border border-pink-200 dark:border-pink-800/60'
-                          : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300'
-                      }`}
-                    >
-                      🖥️ 桌面
-                    </button>
-
-                    <button
-                      onClick={handleRequestFolderPermission}
-                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer text-xs"
-                      title="向 macOS 系统申请目标文件夹读写访问权限"
-                    >
-                      <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      <span>申请权限</span>
-                    </button>
+                    {hasFolderPermission !== true && (
+                      <button
+                        onClick={handleRequestFolderPermission}
+                        className="flex items-center gap-1 px-2.5 py-1.5 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer text-xs"
+                        title="向 macOS 系统申请目标文件夹读写访问权限"
+                      >
+                        <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>申请权限</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={handleSelectSaveDirectory}
-                      className="flex items-center gap-1 px-3 py-1 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-200/90 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer ml-0.5 shadow-2xs"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-300/80 dark:border-neutral-700 rounded-lg transition-colors cursor-pointer shadow-2xs"
                       title="打开 macOS 访达窗口选择目标保存目录并授权"
                     >
                       <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
                       <span>选择目录...</span>
-                    </button>
-
-                    <button
-                      onClick={handleEditPathManually}
-                      className="px-2 py-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-[10px]"
-                      title="手动输入或粘贴保存路径"
-                    >
-                      修改路径
                     </button>
                   </div>
                 </div>
@@ -856,7 +787,7 @@ export default function App() {
               </div>
 
               {/* Row 3: Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-neutral-500 dark:text-neutral-400">剪辑时长:</span>
                   <span className="font-mono font-bold text-neutral-900 dark:text-neutral-100 text-sm">
@@ -868,17 +799,20 @@ export default function App() {
                 <button
                   onClick={handleInAppTrimExport}
                   disabled={isExporting}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-[1.01] cursor-pointer"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-3 bg-gradient-to-r from-pink-500 via-rose-500 to-indigo-600 hover:from-pink-600 hover:via-rose-600 hover:to-indigo-700 active:scale-[0.98] disabled:opacity-60 text-white rounded-xl text-sm font-extrabold tracking-wide shadow-md shadow-pink-500/25 dark:shadow-pink-950/50 hover:shadow-xl hover:shadow-pink-500/35 border border-white/20 transition-all cursor-pointer group"
                 >
                   {isExporting ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
                       <span>正在无损导出剪辑 ({exportProgress}%)...</span>
                     </>
                   ) : (
                     <>
-                      <Scissors className="w-4 h-4" />
+                      <Scissors className="w-4.5 h-4.5 text-white transition-transform group-hover:rotate-12 duration-200" />
                       <span>一键无损剪辑导出</span>
+                      <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white rounded-full tracking-normal">
+                        原画极速
+                      </span>
                     </>
                   )}
                 </button>
