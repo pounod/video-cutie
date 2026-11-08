@@ -1,18 +1,16 @@
 import React from 'react';
-import { Moon, Sun, Info } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import appIcon from '../assets/app_icon.png';
 import { APP_INFO } from '../utils/dmgGenerator';
 
 interface MacTitleBarProps {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-  onOpenAbout: () => void;
 }
 
 export const MacTitleBar: React.FC<MacTitleBarProps> = ({
   isDarkMode,
   toggleDarkMode,
-  onOpenAbout,
 }) => {
   return (
     <header 
@@ -39,7 +37,7 @@ export const MacTitleBar: React.FC<MacTitleBarProps> = ({
         </div>
       </div>
 
-      {/* Zone 2: Titlebar Quick Controls (Theme Toggle & About) */}
+      {/* Zone 2: Titlebar Quick Controls (Theme Toggle) */}
       <div className="flex items-center gap-2 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button
           onClick={toggleDarkMode}
@@ -47,15 +45,6 @@ export const MacTitleBar: React.FC<MacTitleBarProps> = ({
           title={isDarkMode ? '切换浅色模式' : '切换深色模式'}
         >
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-neutral-600" />}
-        </button>
-
-        <button
-          onClick={onOpenAbout}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-200/60 dark:bg-neutral-800/60 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer"
-          title="关于 视频剪辑姬"
-        >
-          <Info className="w-3.5 h-3.5" />
-          <span>关于</span>
         </button>
       </div>
     </header>

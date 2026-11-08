@@ -503,7 +503,6 @@ export default function App() {
       <MacTitleBar
         isDarkMode={isDarkMode}
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-        onOpenAbout={() => setIsAboutOpen(true)}
       />
 
       {/* Main Content Area - Streamlined without multi-layer box nesting */}
@@ -861,22 +860,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Clean Bottom Status Bar */}
-      <footer className="mt-auto px-5 py-2.5 border-t border-neutral-200/80 dark:border-neutral-800/80 bg-neutral-100/60 dark:bg-neutral-900/60 text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between max-w-6xl w-full mx-auto">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-neutral-800 dark:text-neutral-200">{APP_INFO.appNameZh} ({APP_INFO.appNameEn})</span>
-          <span>v{APP_INFO.version}</span>
-          <span>·</span>
-          <span>Apple Silicon (M1~M4) & Intel x86_64</span>
-        </div>
 
-        <button 
-          onClick={() => setIsAboutOpen(true)} 
-          className="hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-[11px]"
-        >
-          关于视频剪辑姬
-        </button>
-      </footer>
 
       {/* About Modal */}
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
