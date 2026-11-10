@@ -19,17 +19,16 @@ import {
   Zap,
   Film,
   ShieldCheck,
-  Key
+  Key,
+  Trash2
 } from 'lucide-react';
 import appIcon from './assets/app_icon.png';
 
 export default function App() {
-  // Theme State
+  // Theme State: Automatically follows macOS system appearance
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('videocutie_theme');
-      if (saved) return saved === 'dark';
-      return true; // Default to dark mode for macOS media editing
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return true;
   });
@@ -85,27 +84,22 @@ export default function App() {
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [lastExportedPath, setLastExportedPath] = useState<string | null>(null);
 
-  // Apply dark mode class to html element
+  // Apply dark mode class to html element based on macOS appearance
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('videocutie_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('videocutie_theme', 'light');
     }
   }, [isDarkMode]);
 
-  // System Dark Mode synchronization with macOS appearance
+  // Synchronize with macOS system theme automatically
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDarkMode(mediaQuery.matches);
     const handleSystemChange = (e: MediaQueryListEvent) => {
-      // If user hasn't explicitly set a custom theme in localStorage, sync with system
-      const saved = localStorage.getItem('videocutie_theme');
-      if (!saved) {
-        setIsDarkMode(e.matches);
-      }
+      setIsDarkMode(e.matches);
     };
     mediaQuery.addEventListener('change', handleSystemChange);
     return () => mediaQuery.removeEventListener('change', handleSystemChange);
@@ -464,7 +458,7 @@ export default function App() {
     if (nativeBridge) {
       if (!metadata?.filePath) {
         setIsExporting(false);
-        setExportErrorMessage('⚠️ 客户端未能定位到该视频在 macOS 系统上的绝对路径。请点击“更换视频”重新选取文件后导出。');
+        setExportErrorMessage('⚠️ 客户端未能定位到该视频在 macOS 系统上的绝对路径。请点击“清空视频”重新选取文件后导出。');
         return;
       }
       setExportProgress(35);
@@ -500,43 +494,39 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 transition-colors font-sans select-none antialiased">
       {/* Native-integrated macOS Title Bar */}
-      <MacTitleBar
-        isDarkMode={isDarkMode}
-        toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-      />
+      <MacTitleBar />
 
       {/* Main Content Area - Streamlined without multi-layer box nesting */}
       <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-5 flex flex-col gap-4">
         {!videoSrc ? (
-          // Unified Empty State: Clean Drop Canvas without redundant nested card wrappers
-          <div className="flex-1 flex flex-col justify-center my-auto py-4">
-            <div className="flex flex-col gap-5">
-              {/* Clean App Header Strip */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
-                <div className="flex items-center gap-3.5">
-                  <img
-                    src={appIcon}
-                    alt="视频剪辑姬 App Icon"
-                    className="w-14 h-14 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10"
-                  />
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                        {APP_INFO.appNameZh} <span className="font-normal text-sm text-neutral-500">({APP_INFO.appNameEn})</span>
-                      </h1>
-                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border border-pink-200/60 dark:border-pink-800/60">
-                        v{APP_INFO.version}
-                      </span>
-                    </div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                      内置 FFmpeg 引擎 · 原画音视频流复制无损裁剪 · 智能时间格式补全 (输入 012536 自动补全为 01:25:36)
-                    </p>
+          // Unified Empty State: Generous Full-Height Drop Canvas
+          <div className="flex-1 flex flex-col justify-between gap-5 py-2 min-h-[calc(100vh-100px)]">
+            {/* Clean App Header Strip */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 shrink-0">
+              <div className="flex items-center gap-3.5">
+                <img
+                  src={appIcon}
+                  alt="视频剪辑姬 App Icon"
+                  className="w-14 h-14 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 shrink-0"
+                />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+                      {APP_INFO.appNameZh} <span className="font-normal text-sm text-neutral-500">({APP_INFO.appNameEn})</span>
+                    </h1>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border border-pink-200/60 dark:border-pink-800/60">
+                      v{APP_INFO.version}
+                    </span>
                   </div>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    内置 FFmpeg 引擎 · 原画音视频流复制无损裁剪 · 智能时间格式补全
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Drop Canvas */}
-              <DropZone onVideoLoaded={handleVideoLoaded} />
+            {/* Expanded Drop Canvas: Maximum Area for Easy Drag & Drop */}
+            <DropZone onVideoLoaded={handleVideoLoaded} className="flex-1 min-h-[460px] sm:min-h-[520px]" />
 
               {/* Current Configured Save Path Display (Prominently visible and persistent with macOS permission application) */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
@@ -607,7 +597,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            </div>
           </div>
         ) : (
           // Active Studio: Unified Workspace
@@ -630,10 +619,11 @@ export default function App() {
 
               <button
                 onClick={handleResetVideo}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 dark:bg-neutral-800 hover:bg-red-50 dark:hover:bg-red-950/40 border border-transparent hover:border-red-200 dark:hover:border-red-800/60 rounded-lg transition-colors cursor-pointer"
+                title="清空当前视频并返回初始导入界面"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>更换视频</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>清空视频</span>
               </button>
             </div>
 
