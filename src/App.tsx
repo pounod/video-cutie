@@ -93,6 +93,21 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // Hide scrollbar when no video is loaded
+  useEffect(() => {
+    if (!videoSrc) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [videoSrc]);
+
   // Synchronize with macOS system theme automatically
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
@@ -492,15 +507,15 @@ export default function App() {
   const clipDuration = Math.max(0, endSeconds - startSeconds);
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 transition-colors font-sans select-none antialiased">
+    <div className={`min-h-screen ${!videoSrc ? 'h-screen overflow-hidden' : ''} flex flex-col bg-neutral-100 dark:bg-neutral-950 text-neutral-800 dark:text-neutral-200 transition-colors font-sans select-none antialiased`}>
       {/* Native-integrated macOS Title Bar */}
       <MacTitleBar />
 
       {/* Main Content Area - Streamlined without multi-layer box nesting */}
-      <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-5 flex flex-col gap-4">
+      <main className={`flex-1 w-full max-w-6xl mx-auto p-4 sm:p-5 flex flex-col gap-4 ${!videoSrc ? 'h-[calc(100vh-45px)] overflow-hidden justify-between' : ''}`}>
         {!videoSrc ? (
           // Unified Empty State: Generous Full-Height Drop Canvas
-          <div className="flex-1 flex flex-col justify-between gap-5 py-2 min-h-[calc(100vh-100px)]">
+          <div className="flex-1 flex flex-col justify-between gap-4 h-full overflow-hidden">
             {/* Clean App Header Strip */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 shrink-0">
               <div className="flex items-center gap-3.5">
@@ -510,14 +525,9 @@ export default function App() {
                   className="w-14 h-14 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 shrink-0"
                 />
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                      {APP_INFO.appNameZh} <span className="font-normal text-sm text-neutral-500">({APP_INFO.appNameEn})</span>
-                    </h1>
-                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border border-pink-200/60 dark:border-pink-800/60">
-                      v{APP_INFO.version}
-                    </span>
-                  </div>
+                  <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+                    {APP_INFO.appNameZh} <span className="font-normal text-sm text-neutral-500">({APP_INFO.appNameEn})</span>
+                  </h1>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                     内置 FFmpeg 引擎 · 原画音视频流复制无损裁剪 · 智能时间格式补全
                   </p>
@@ -526,7 +536,7 @@ export default function App() {
             </div>
 
             {/* Expanded Drop Canvas: Maximum Area for Easy Drag & Drop */}
-            <DropZone onVideoLoaded={handleVideoLoaded} className="flex-1 min-h-[460px] sm:min-h-[520px]" />
+            <DropZone onVideoLoaded={handleVideoLoaded} className="flex-1 min-h-[360px]" />
 
               {/* Current Configured Save Path Display (Prominently visible and persistent with macOS permission application) */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
