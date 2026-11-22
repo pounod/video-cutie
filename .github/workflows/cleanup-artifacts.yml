@@ -1,0 +1,62 @@
+name: 清理过期 Artifacts
+
+on:
+  schedule:
+    # 每天新加坡时间凌晨 03:00（UTC 19:00）执行一次
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cleanup-artifacts:
+    name: 清理创建超过 1 天的 Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: 删除创建超过 1 天的 Artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            const cutoffTime = Date.now() - oneDayMs;
+
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              {
+                owner,
+                repo,
+                per_page: 100,
+              }
+            );
+
+            core.info(`共获取到 ${artifacts.length} 个 Artifacts，清理截止时间: ${new Date(cutoffTime).toISOString()}`);
+
+            let deletedCount = 0;
+            let skippedCount = 0;
+            let failedCount = 0;
+
+            for (const artifact of artifacts) {
+              const createdAt = new Date(artifact.created_at).getTime();
+              if (Number.isNaN(createdAt) || createdAt >= cutoffTime) {
+                skippedCount += 1;
+                continue;
+              }
+
+              try {
+                await github.rest.actions.deleteArtifact({
+                  owner,
+                  repo,
+                  artifact_id: artifact.id,
+                });
+                deletedCount += 1;
+                core.info(`已删除过期 Artifact: ${artifact.name} (ID: ${artifact.id}, 创建于: ${artifact.created_at})`);
+              } catch (error) {
+                failedCount += 1;
+                core.warning(`删除 Artifact 失败: ${artifact.name} (ID: ${artifact.id}) - ${error.message}`);
+              }
+            }
+
+            core.info(`清理完成：已删除 ${deletedCount} 个，保留 ${skippedCount} 个，失败 ${failedCount} 个。`);
