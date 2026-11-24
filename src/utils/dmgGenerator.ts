@@ -151,21 +151,19 @@ on:
 permissions:
   contents: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
-
 jobs:
   build-macos-dmg:
     name: 构建内置 FFmpeg 的 macOS Universal 客户端与 DMG
     runs-on: macos-latest
     steps:
       - name: 检出仓库代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安装 Node.js 运行时
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: 安装项目依赖 (配置 macOS 原生环境)
         run: |
@@ -224,7 +222,7 @@ jobs:
           fi
 
       - name: 上传构建产物 Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: VideoCutie-macOS-Universal-DMG
           path: |
@@ -233,7 +231,7 @@ jobs:
 
       - name: 在 GitHub Releases 中自动发布
         if: \${{ github.event.inputs.create_release != false }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: \${{ github.event.inputs.release_title || '视频剪辑姬（Video Cutie）v1.2.5' }}
           tag_name: "v\${{ github.event.inputs.version || '1.2.5' }}"
