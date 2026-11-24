@@ -3,7 +3,7 @@
 ### 🏷️ 软件基本信息
 - **中文名称**：视频剪辑姬
 - **英文名称**：Video Cutie
-- **当前版本**：v1.2.4
+- **当前版本**：v1.2.5
 - **运行平台**：macOS 11.0 Big Sur 及以上（全面支持 macOS 15+ Sequoia）
 - **芯片架构**：Universal 通用双架构（原生同时兼容 Apple Silicon M1/M2/M3/M4 与 Intel x86_64）
 - **客户端架构**：原生 macOS Cocoa + WebKit 独立桌面窗口程序（离线独立运行，零外部依赖）
@@ -12,16 +12,16 @@
 
 ---
 
-### 🚀 v1.2.4 核心优化与改动明细
+### 🚀 v1.2.5 核心优化与修复明细
 
-#### 1. 客户端初始窗口与界面尺寸优化为一般大小
-- 将原生 macOS 窗口默认尺寸调整为 `900 × 620`（自适应屏幕可视区域），最小尺寸调整为 `720 × 500`。
-- 主工作区收敛至 `max-w-4xl`，空状态拖拽画布居中呈现且不再全屏拉伸，视频预览区最大高度调整为 `340px`。
+#### 1. 修复顶部标题栏无法拖拽移动客户端窗口
+- 新增原生 `TitlebarDragView` 覆盖顶部标题栏区域（避开左上角交通灯按钮），支持拖拽移动窗口及双击标题栏缩放。
 
-#### 2. 清理客户端界面中重复展示的功能与提示
-- 去除初始界面与顶部标题栏重复的应用图标、名称及副标题区块。
-- 将保存路径栏中重复的多个权限申请按钮整合为单一按钮，并简化重复的路径说明文字。
-- 移除视频预览画面上重复的文件名与裁剪区间浮层、双时间输入框中重复的演示按钮，以及底部重复展示的无损流复制横幅。
+#### 2. 「关于 视频剪辑姬」改用标准 macOS 原生窗口与控件
+- 使用原生 Cocoa `NSWindow` 与标准 AppKit 控件（`NSImageView`、`NSTextField`、`NSBox`、`NSStackView`）重构关于窗口，移除右上角多余关闭按钮，左上角关闭、最小化、最大化功能全部原生可用。
 
-#### 3. 全局版本号升级为 1.2.4
-- 全面同步更新至 **v1.2.4**（涵盖 `package.json`、`index.html`、`src/utils/dmgGenerator.ts`、`src-macos/main.swift`、`scripts/build-dmg.sh` 及 `.github/workflows/build-dmg.yml`）。
+#### 3. 应用图标尺寸对齐系统其他应用
+- 按照 Apple macOS Big Sur+ 图标网格标准，将 `app_icon.png` 与 `AppIcon.icns` 调整为 `1024 × 1024` 画布内居中 `824 × 824` 主体与标准安全边距，消除在 Dock 与访达中偏大的问题。
+
+#### 4. 全局版本号升级为 1.2.5
+- 全面同步更新至 **v1.2.5**（涵盖 `package.json`、`index.html`、`src/utils/dmgGenerator.ts`、`src-macos/main.swift`、`scripts/build-dmg.sh` 及 `.github/workflows/build-dmg.yml`）。

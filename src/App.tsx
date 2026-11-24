@@ -4,7 +4,6 @@ import { DropZone } from './components/DropZone';
 import { TimelineScrubber } from './components/TimelineScrubber';
 import { TimeInputBox } from './components/TimeInputBox';
 import { VideoMetadataCard, VideoMetadata } from './components/VideoMetadataCard';
-import { AboutModal } from './components/AboutModal';
 import { formatSecondsToHHMMSS } from './utils/timeFormat';
 import { APP_INFO } from './utils/dmgGenerator';
 import { 
@@ -29,8 +28,6 @@ export default function App() {
     }
     return true;
   });
-
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   // Video State
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
@@ -125,7 +122,6 @@ export default function App() {
       onFolderPermissionGranted?: (path: string, granted: boolean) => void;
       onFolderPermissionChecked?: (path: string, writable: boolean) => void;
       onDefaultPathsReceived?: (paths: { movies?: string; downloads?: string; desktop?: string }) => void;
-      onOpenAboutModal?: () => void;
       onSystemThemeChanged?: (isDark: boolean) => void;
       onNativeVideoFileDropped?: (path: string, name: string) => void;
       onNativeVideoFileSelected?: (path: string, name: string) => void;
@@ -190,10 +186,6 @@ export default function App() {
           updateSaveDirectory(paths.movies);
         }
       }
-    };
-
-    win.onOpenAboutModal = () => {
-      setIsAboutOpen(true);
     };
 
     // Ask native bridge for default macOS directories, permission status and current system theme on startup
@@ -773,11 +765,6 @@ export default function App() {
           </div>
         )}
       </main>
-
-
-
-      {/* About Modal */}
-      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
     </div>
   );
 }

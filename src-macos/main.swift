@@ -3,7 +3,7 @@ import WebKit
 import UniformTypeIdentifiers
 
 /**
- * 视频剪辑姬（Video Cutie）v1.2.4 - macOS 原生客户端主入口
+ * 视频剪辑姬（Video Cutie）v1.2.5 - macOS 原生客户端主入口
  * 架构: Universal Binary (Apple Silicon arm64 + Intel x86_64)
  * 特性:
  *  - 原生 Cocoa 窗口 + WebKit WKWebView 独立客户端界面 (无浏览器依赖、无多层嵌套)
@@ -41,6 +41,64 @@ class DragDroppableWebView: WKWebView {
             .fileURL,
             NSPasteboard.PasteboardType("NSFilenamesPboardType")
         ])
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        return .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let pasteboard = sender.draggingPasteboard
+        var droppedURL: URL? = nil
+
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let firstURL = urls.first {
+            droppedURL = firstURL
+        } else if let files = pasteboard.propertyList(forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String], let firstPath = files.first {
+            droppedURL = URL(fileURLWithPath: firstPath)
+        }
+
+        if let url = droppedURL {
+            bridgeDelegate?.handleFileDropped(url: url)
+            return true
+        }
+        return false
+    }
+}
+
+// 原生顶部标题栏拖拽区域（避开左上角交通灯按钮，支持拖拽移动窗口与双击缩放）
+class TitlebarDragView: NSView {
+    weak var bridgeDelegate: AppDelegate?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([
+            .fileURL,
+            NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes([
+            .fileURL,
+            NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        ])
+    }
+
+    override var mouseDownCanMoveWindow: Bool {
+        return true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            window?.performZoom(nil)
+            return
+        }
+        window?.performDrag(with: event)
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -236,6 +294,7 @@ class LocalBundleSchemeHandler: NSObject, WKURLSchemeHandler {
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler {
     var window: MainWindow!
+    var aboutWindow: NSWindow?
     var webView: WKWebView!
     private var schemeHandler: LocalBundleSchemeHandler?
 
@@ -263,6 +322,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         window.title = "视频剪辑姬 (Video Cutie)"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
         window.minSize = NSSize(width: 720, height: 500)
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -304,6 +364,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         customWebView.autoresizingMask = [.width, .height]
         webView = customWebView
         window.contentView?.addSubview(webView)
+
+        // 覆盖顶部标题栏拖拽热区（x >= 76 避开原生交通灯按钮）
+        let titlebarHeight: CGFloat = 42
+        let trafficLightWidth: CGFloat = 76
+        let contentBounds = window.contentView!.bounds
+        let dragRect = NSRect(
+            x: trafficLightWidth,
+            y: max(0, contentBounds.height - titlebarHeight),
+            width: max(0, contentBounds.width - trafficLightWidth),
+            height: titlebarHeight
+        )
+        let dragView = TitlebarDragView(frame: dragRect)
+        dragView.bridgeDelegate = self
+        dragView.autoresizingMask = [.width, .minYMargin]
+        window.contentView?.addSubview(dragView, positioned: .above, relativeTo: webView)
 
         // 监听系统深色模式/浅色模式切换
         DistributedNotificationCenter.default().addObserver(
@@ -376,7 +451,102 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
 
     @objc func showAbout() {
         DispatchQueue.main.async {
-            self.webView.evaluateJavaScript("window.onOpenAboutModal && window.onOpenAboutModal();", completionHandler: nil)
+            if self.aboutWindow == nil {
+                let aboutRect = NSRect(x: 0, y: 0, width: 420, height: 320)
+                let about = NSWindow(
+                    contentRect: aboutRect,
+                    styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                    backing: .buffered,
+                    defer: false
+                )
+                about.title = "关于 视频剪辑姬"
+                about.minSize = NSSize(width: 360, height: 280)
+                about.isReleasedWhenClosed = false
+                about.backgroundColor = NSColor.windowBackgroundColor
+
+                let contentView = NSView(frame: aboutRect)
+                contentView.translatesAutoresizingMaskIntoConstraints = false
+                about.contentView = contentView
+
+                let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2.5"
+
+                let iconView = NSImageView()
+                iconView.image = NSApp.applicationIconImage
+                iconView.imageScaling = .scaleProportionallyUpOrDown
+                iconView.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    iconView.widthAnchor.constraint(equalToConstant: 80),
+                    iconView.heightAnchor.constraint(equalToConstant: 80)
+                ])
+
+                let titleLabel = NSTextField(labelWithString: "视频剪辑姬 (Video Cutie)")
+                titleLabel.font = NSFont.systemFont(ofSize: 17, weight: .bold)
+                titleLabel.textColor = NSColor.labelColor
+                titleLabel.alignment = .center
+
+                let versionLabel = NSTextField(labelWithString: "版本 \(appVersion) · Universal (arm64 + x86_64)")
+                versionLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+                versionLabel.textColor = NSColor.secondaryLabelColor
+                versionLabel.alignment = .center
+
+                let separator = NSBox()
+                separator.boxType = .separator
+                separator.translatesAutoresizingMaskIntoConstraints = false
+
+                let descLabel = NSTextField(wrappingLabelWithString: "专为 macOS 设计的原生视频极速无损裁剪工具。内置 FFmpeg 原生引擎，支持拖拽导入、智能时间自动补全 (012536 → 01:25:36) 与原画音视频流无损复制 (-c copy) 一键导出。")
+                descLabel.font = NSFont.systemFont(ofSize: 12)
+                descLabel.textColor = NSColor.secondaryLabelColor
+                descLabel.alignment = .center
+                descLabel.maximumNumberOfLines = 4
+                descLabel.preferredMaxLayoutWidth = 340
+
+                let footerLabel = NSTextField(labelWithString: "macOS 11.0+ · 内置 FFmpeg 核心 · Copyright © 2026 Video Cutie")
+                footerLabel.font = NSFont.systemFont(ofSize: 11)
+                footerLabel.textColor = NSColor.tertiaryLabelColor
+                footerLabel.alignment = .center
+
+                let stack = NSStackView(views: [
+                    iconView,
+                    titleLabel,
+                    versionLabel,
+                    separator,
+                    descLabel,
+                    footerLabel
+                ])
+                stack.orientation = .vertical
+                stack.alignment = .centerX
+                stack.spacing = 10
+                stack.setCustomSpacing(4, after: titleLabel)
+                stack.setCustomSpacing(14, after: versionLabel)
+                stack.setCustomSpacing(14, after: separator)
+                stack.setCustomSpacing(16, after: descLabel)
+                stack.translatesAutoresizingMaskIntoConstraints = false
+
+                contentView.addSubview(stack)
+                NSLayoutConstraint.activate([
+                    separator.widthAnchor.constraint(equalTo: stack.widthAnchor),
+                    stack.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+                    stack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+                    stack.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 28),
+                    stack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -28),
+                    stack.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 24),
+                    stack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -24)
+                ])
+
+                self.aboutWindow = about
+            }
+
+            if let about = self.aboutWindow {
+                if let mainFrame = self.window?.frame {
+                    let x = mainFrame.midX - about.frame.width / 2
+                    let y = mainFrame.midY - about.frame.height / 2
+                    about.setFrameOrigin(NSPoint(x: x, y: y))
+                } else {
+                    about.center()
+                }
+                about.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 

@@ -13,7 +13,7 @@ export const MacTitleBar: React.FC = () => {
         <img
           src={appIcon}
           alt="视频剪辑姬"
-          className="w-5 h-5 rounded-md object-cover shadow-xs"
+          className="w-6 h-6 rounded-md object-cover"
         />
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-sm text-neutral-900 dark:text-neutral-100 tracking-tight">

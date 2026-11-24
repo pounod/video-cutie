@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 视频剪辑姬（Video Cutie）v1.2.4 - macOS Universal DMG 打包脚本
+# 视频剪辑姬（Video Cutie）v1.2.5 - macOS Universal DMG 打包脚本
 # 适用: GitHub Actions macOS 运行器 或 本地 macOS 终端
 # 架构: Universal Binary (Apple Silicon M1/M2/M3/M4 arm64 + Intel x86_64)
 # 特性: 内置打包 FFmpeg + 原生 macOS Cocoa 客户端窗口 + 无黑边圆角扁平图标
@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-1.2.4}"
+VERSION="${1:-1.2.5}"
 APP_NAME_EN="VideoCutie"
 APP_DISPLAY_NAME="视频剪辑姬"
 OUTPUT_DIR="dist-dmg"
