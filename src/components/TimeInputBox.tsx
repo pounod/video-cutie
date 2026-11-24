@@ -74,15 +74,6 @@ export const TimeInputBox: React.FC<TimeInputBoxProps> = ({
     onTimeChange(formatted, newSecs);
   };
 
-  // Test fill "012536" to instantly verify the prompt's exact requirement!
-  const triggerDemo012536 = () => {
-    const res = autocompleteTimeInput('012536', totalDuration);
-    setInputValue(res.formatted);
-    onTimeChange(res.formatted, res.seconds);
-    setJustAutocompleted(true);
-    setTimeout(() => setJustAutocompleted(false), 3000);
-  };
-
   return (
     <div className="flex flex-col gap-2 p-3.5 bg-neutral-50/90 dark:bg-neutral-900 rounded-xl border border-neutral-200/80 dark:border-neutral-800 transition-all">
       <div className="flex items-center justify-between">
@@ -110,7 +101,7 @@ export const TimeInputBox: React.FC<TimeInputBoxProps> = ({
             value={inputValue}
             onChange={handleChange}
             onBlur={handleBlur}
-            placeholder="00:00:00 或直接输 012536"
+            placeholder="00:00:00 (如 012536)"
             className="w-full px-3 py-2 text-base font-mono font-bold tracking-wider text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500/30 focus:border-pink-500 transition-all tabular-nums text-center shadow-2xs"
           />
         </div>
@@ -137,37 +128,25 @@ export const TimeInputBox: React.FC<TimeInputBoxProps> = ({
       </div>
 
       {/* Action toolstrip */}
-      <div className="flex items-center justify-between text-xs pt-1 border-t border-neutral-100 dark:border-neutral-800">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onSetToCurrent}
-            className="flex items-center gap-1 px-2 py-1 text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-md transition-colors cursor-pointer"
-            title="将当前视频播放进度设为此时间"
-          >
-            <Crosshair className="w-3 h-3 text-blue-500" />
-            <span>设为播放点</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onResetDefault}
-            className="flex items-center gap-1 px-2 py-1 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 rounded-md transition-colors"
-            title={isStartTime ? '重置为 00:00:00' : '重置为视频总时长'}
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>重置默认</span>
-          </button>
-        </div>
-
-        {/* Quick test demonstration for prompt rule: "012536 -> 01:25:36" */}
+      <div className="flex items-center gap-1.5 text-xs pt-1 border-t border-neutral-100 dark:border-neutral-800">
         <button
           type="button"
-          onClick={triggerDemo012536}
-          className="text-[11px] font-mono text-blue-600 dark:text-blue-400 hover:underline px-1 py-0.5 rounded cursor-pointer"
-          title="点击演示: 输入 012536 自动补全为 01:25:36"
+          onClick={onSetToCurrent}
+          className="flex items-center gap-1 px-2 py-1 text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-md transition-colors cursor-pointer"
+          title="将当前视频播放进度设为此时间"
         >
-          试试输入 “012536”
+          <Crosshair className="w-3 h-3 text-blue-500" />
+          <span>设为播放点</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onResetDefault}
+          className="flex items-center gap-1 px-2 py-1 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 rounded-md transition-colors cursor-pointer"
+          title={isStartTime ? '重置为 00:00:00' : '重置为视频总时长'}
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>重置默认</span>
         </button>
       </div>
     </div>

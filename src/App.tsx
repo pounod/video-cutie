@@ -16,13 +16,10 @@ import {
   FolderOpen, 
   FolderCheck,
   AlertCircle,
-  Zap,
-  Film,
   ShieldCheck,
   Key,
   Trash2
 } from 'lucide-react';
-import appIcon from './assets/app_icon.png';
 
 export default function App() {
   // Theme State: Automatically follows macOS system appearance
@@ -511,102 +508,59 @@ export default function App() {
       {/* Native-integrated macOS Title Bar */}
       <MacTitleBar />
 
-      {/* Main Content Area - Streamlined without multi-layer box nesting */}
-      <main className={`flex-1 w-full max-w-6xl mx-auto p-4 sm:p-5 flex flex-col gap-4 ${!videoSrc ? 'h-[calc(100vh-45px)] overflow-hidden justify-between' : ''}`}>
+      {/* Main Content Area */}
+      <main className={`flex-1 w-full max-w-4xl mx-auto p-4 sm:p-5 flex flex-col gap-3.5 ${!videoSrc ? 'h-[calc(100vh-45px)] overflow-hidden justify-center' : ''}`}>
         {!videoSrc ? (
-          // Unified Empty State: Generous Full-Height Drop Canvas
-          <div className="flex-1 flex flex-col justify-between gap-4 h-full overflow-hidden">
-            {/* Clean App Header Strip */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 shrink-0">
-              <div className="flex items-center gap-3.5">
-                <img
-                  src={appIcon}
-                  alt="视频剪辑姬 App Icon"
-                  className="w-14 h-14 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 shrink-0"
-                />
-                <div className="flex flex-col">
-                  <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                    {APP_INFO.appNameZh} <span className="font-normal text-sm text-neutral-500">({APP_INFO.appNameEn})</span>
-                  </h1>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                    内置 FFmpeg 引擎 · 原画音视频流复制无损裁剪 · 智能时间格式补全
-                  </p>
+          // Compact Empty State: Standard-sized centered Drop Canvas + Save Path Bar
+          <div className="flex flex-col gap-3.5 w-full max-w-2xl mx-auto">
+            <DropZone onVideoLoaded={handleVideoLoaded} className="min-h-[260px]" />
+
+            {/* Save Path Bar (Single permission control, no duplicate labels) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
+                <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 shrink-0">
+                  <Folder className="w-4 h-4" />
                 </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                      保存路径
+                    </span>
+                    {hasFolderPermission === true && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1" title="macOS 文件夹读写访问权限已授权">
+                        <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                        已授权
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs font-mono font-semibold text-pink-600 dark:text-pink-400 truncate mt-0.5" title={saveDirectory}>
+                    {saveDirectory || '~/Movies'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end text-xs">
+                {hasFolderPermission !== true && (
+                  <button
+                    onClick={handleRequestFolderPermission}
+                    className="flex items-center gap-1 px-2.5 py-1.5 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer"
+                    title="向 macOS 申请设定保存路径的系统文件夹访问权限"
+                  >
+                    <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>申请权限</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleSelectSaveDirectory}
+                  className="flex items-center gap-1.5 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-300/80 dark:border-neutral-700 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                  title="选择保存目录"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
+                  <span>选择目录...</span>
+                </button>
               </div>
             </div>
-
-            {/* Expanded Drop Canvas: Maximum Area for Easy Drag & Drop */}
-            <DropZone onVideoLoaded={handleVideoLoaded} className="flex-1 min-h-[360px]" />
-
-              {/* Current Configured Save Path Display (Prominently visible and persistent with macOS permission application) */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-neutral-900/90 rounded-xl border border-neutral-200/80 dark:border-neutral-800 shadow-xs">
-                <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
-                  <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 shrink-0">
-                    <Folder className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                        当前设定的保存路径：
-                      </span>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-                        持续生效
-                      </span>
-
-                      {/* macOS Folder Access Permission Application Badge */}
-                      {hasFolderPermission === true ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1" title="macOS 文件夹读写访问权限已授权">
-                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                          已授权访问
-                        </span>
-                      ) : hasFolderPermission === false ? (
-                        <button
-                          onClick={handleRequestFolderPermission}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 flex items-center gap-1 transition-colors cursor-pointer"
-                          title="点击向 macOS 系统申请目标文件夹的读写访问权限"
-                        >
-                          <Key className="w-3 h-3 text-amber-500" />
-                          申请文件夹权限
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleRequestFolderPermission}
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center gap-1 transition-colors cursor-pointer"
-                          title="向 macOS 申请该目录读写权限"
-                        >
-                          <ShieldCheck className="w-3 h-3" />
-                          申请授权
-                        </button>
-                      )}
-                    </div>
-                    <span className="text-xs font-mono font-bold text-pink-600 dark:text-pink-400 truncate mt-0.5" title={saveDirectory}>
-                      {saveDirectory || '~/Movies'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end overflow-x-auto text-xs">
-                  {hasFolderPermission !== true && (
-                    <button
-                      onClick={handleRequestFolderPermission}
-                      className="flex items-center gap-1 px-2.5 py-1.5 font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/80 dark:border-amber-700/80 rounded-lg transition-colors cursor-pointer"
-                      title="向 macOS 申请设定保存路径的系统文件夹访问权限"
-                    >
-                      <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      <span>申请权限</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleSelectSaveDirectory}
-                    className="flex items-center gap-1.5 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-300/80 dark:border-neutral-700 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                    title="选择保存目录"
-                  >
-                    <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
-                    <span>选择目录...</span>
-                  </button>
-                </div>
-              </div>
           </div>
         ) : (
           // Active Studio: Unified Workspace
@@ -688,47 +642,22 @@ export default function App() {
                 />
               </div>
 
-              {/* Row 2: Save Directory Section (Prominently visible and persistent) */}
-              <div className="flex flex-col gap-2.5 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+              {/* Row 2: Save Directory Section */}
+              <div className="flex flex-col gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400">
                       <Folder className="w-4 h-4" />
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                        当前设定的保存路径：
+                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                      保存路径
+                    </span>
+                    {hasFolderPermission === true && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1" title="macOS 文件夹读写访问权限已授权">
+                        <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                        已授权
                       </span>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-                        持续生效
-                      </span>
-
-                      {/* macOS Folder Access Permission Application Badge */}
-                      {hasFolderPermission === true ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1" title="macOS 文件夹读写访问权限已授权">
-                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                          已授权访问
-                        </span>
-                      ) : hasFolderPermission === false ? (
-                        <button
-                          onClick={handleRequestFolderPermission}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 flex items-center gap-1 transition-colors cursor-pointer"
-                          title="点击向 macOS 系统申请目标文件夹的读写访问权限"
-                        >
-                          <Key className="w-3 h-3 text-amber-500" />
-                          申请文件夹权限
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleRequestFolderPermission}
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center gap-1 transition-colors cursor-pointer"
-                          title="向 macOS 申请该目录读写权限"
-                        >
-                          <ShieldCheck className="w-3 h-3" />
-                          申请授权
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
 
                   {/* Action button */}
@@ -742,7 +671,7 @@ export default function App() {
                         className="px-2.5 py-1 font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-pink-50 dark:hover:bg-pink-950/40 hover:text-pink-600 dark:hover:text-pink-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-pink-200 dark:hover:border-pink-800 text-[11px]"
                         title="保存至源视频同一目录"
                       >
-                        📁 源视频目录
+                        源视频目录
                       </button>
                     )}
 
@@ -759,8 +688,8 @@ export default function App() {
 
                     <button
                       onClick={handleSelectSaveDirectory}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-300/80 dark:border-neutral-700 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                      title="打开 macOS 访达窗口选择目标保存目录并授权"
+                      className="flex items-center gap-1.5 px-3 py-1.5 font-semibold text-neutral-800 dark:text-neutral-200 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-300/80 dark:border-neutral-700 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                      title="选择目标保存目录"
                     >
                       <FolderOpen className="w-3.5 h-3.5 text-pink-500" />
                       <span>选择目录...</span>
@@ -768,16 +697,13 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Path input & preview */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3.5 py-2 bg-neutral-50 dark:bg-neutral-800/90 rounded-lg border border-neutral-200/70 dark:border-neutral-700/80 text-xs font-mono">
-                  <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                    <span className="text-neutral-400 select-none shrink-0 font-sans text-[11px]">设定保存目录:</span>
-                    <span className="text-pink-600 dark:text-pink-400 font-bold truncate" title={saveDirectory}>
-                      {saveDirectory || '~/Movies'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0 flex-1 truncate sm:justify-end border-t sm:border-t-0 sm:border-l border-neutral-200/60 dark:border-neutral-800 pt-1 sm:pt-0 sm:pl-3">
-                    <span className="text-neutral-400 select-none shrink-0 font-sans text-[11px]">预计导出文件:</span>
+                {/* Path & planned filename */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800/90 rounded-lg border border-neutral-200/70 dark:border-neutral-700/80 text-xs font-mono">
+                  <span className="text-pink-600 dark:text-pink-400 font-semibold truncate" title={saveDirectory}>
+                    {saveDirectory || '~/Movies'}
+                  </span>
+                  <div className="flex items-center gap-1.5 min-w-0 truncate sm:justify-end border-t sm:border-t-0 sm:border-l border-neutral-200/60 dark:border-neutral-800 pt-1 sm:pt-0 sm:pl-3">
+                    <span className="text-neutral-400 select-none shrink-0 font-sans text-[11px]">输出文件:</span>
                     <span className="text-neutral-700 dark:text-neutral-300 font-medium truncate" title={plannedOutputFileName}>
                       {plannedOutputFileName}
                     </span>
@@ -798,20 +724,17 @@ export default function App() {
                 <button
                   onClick={handleInAppTrimExport}
                   disabled={isExporting}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-3 bg-gradient-to-r from-pink-500 via-rose-500 to-indigo-600 hover:from-pink-600 hover:via-rose-600 hover:to-indigo-700 active:scale-[0.98] disabled:opacity-60 text-white rounded-xl text-sm font-extrabold tracking-wide shadow-md shadow-pink-500/25 dark:shadow-pink-950/50 hover:shadow-xl hover:shadow-pink-500/35 border border-white/20 transition-all cursor-pointer group"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-pink-500 via-rose-500 to-indigo-600 hover:from-pink-600 hover:via-rose-600 hover:to-indigo-700 active:scale-[0.98] disabled:opacity-60 text-white rounded-xl text-sm font-bold tracking-wide shadow-md shadow-pink-500/25 dark:shadow-pink-950/50 hover:shadow-lg hover:shadow-pink-500/35 border border-white/20 transition-all cursor-pointer group"
                 >
                   {isExporting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                      <span>正在无损导出剪辑 ({exportProgress}%)...</span>
+                      <span>正在导出 ({exportProgress}%)...</span>
                     </>
                   ) : (
                     <>
-                      <Scissors className="w-4.5 h-4.5 text-white transition-transform group-hover:rotate-12 duration-200" />
+                      <Scissors className="w-4 h-4 text-white transition-transform group-hover:rotate-12 duration-200" />
                       <span>一键无损剪辑导出</span>
-                      <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white rounded-full tracking-normal">
-                        原画极速
-                      </span>
                     </>
                   )}
                 </button>
@@ -843,15 +766,6 @@ export default function App() {
                   <span>{exportErrorMessage}</span>
                 </div>
               )}
-
-              {/* Stream Copy Specifications Banner */}
-              <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400 pt-1">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>无损流复制: 保持原始分辨率、色彩与码率，毫秒级无损极速裁剪 (-c copy)</span>
-                </div>
-                <span className="font-mono text-neutral-400">内置 FFmpeg 引擎</span>
-              </div>
             </div>
 
             {/* Video Metadata Specifications (Single Sleek Card) */}

@@ -114,7 +114,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   return (
     <div className="flex flex-col bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800 shadow-md">
       {/* Video Viewport */}
-      <div className="relative aspect-video max-h-[460px] w-full bg-black flex items-center justify-center group overflow-hidden">
+      <div className="relative aspect-video max-h-[340px] w-full bg-black flex items-center justify-center group overflow-hidden">
         <video
           ref={videoRef}
           src={videoSrc}
@@ -128,22 +128,14 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none"
           aria-label={isPlaying ? '暂停' : '播放'}
         >
-          <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-lg transform transition-transform group-hover:scale-105">
-            {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
+          <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-lg transform transition-transform group-hover:scale-105">
+            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
           </div>
         </button>
 
-        {/* Video Filename & Current Time Overlay */}
-        <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-xs text-white border border-white/10 font-mono">
-          <span className="truncate max-w-[200px] text-neutral-300">{videoName}</span>
-          <span className="text-neutral-500">|</span>
-          <span className="text-blue-400 font-semibold">{formatSecondsToHHMMSSMS(currentTime)}</span>
-        </div>
-
-        {/* Clip Duration Pill */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-950/80 backdrop-blur-md text-xs text-blue-200 border border-blue-500/30 font-mono">
-          <span>裁剪区间:</span>
-          <span className="font-bold text-white">{formatSecondsToHHMMSS(clipDuration)}</span>
+        {/* Current Playhead Time Overlay */}
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-xs text-blue-400 border border-white/10 font-mono font-semibold">
+          {formatSecondsToHHMMSSMS(currentTime)}
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import WebKit
 import UniformTypeIdentifiers
 
 /**
- * 视频剪辑姬（Video Cutie）v1.2.3 - macOS 原生客户端主入口
+ * 视频剪辑姬（Video Cutie）v1.2.4 - macOS 原生客户端主入口
  * 架构: Universal Binary (Apple Silicon arm64 + Intel x86_64)
  * 特性:
  *  - 原生 Cocoa 窗口 + WebKit WKWebView 独立客户端界面 (无浏览器依赖、无多层嵌套)
@@ -243,10 +243,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         // 1. 设置标准应用菜单栏 (确保 Cmd+Q 退出、Cmd+W 关闭、Cmd+C/V 剪切板正常工作)
         setupMainMenu()
 
-        // 2. 计算居中窗口尺寸 (1160x780)
+        // 2. 计算居中窗口尺寸 (一般大小: 900x620)
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
-        let windowWidth: CGFloat = 1160
-        let windowHeight: CGFloat = 780
+        let windowWidth: CGFloat = min(900, max(720, screenRect.width - 80))
+        let windowHeight: CGFloat = min(620, max(500, screenRect.height - 80))
         let windowX = max(0, (screenRect.width - windowWidth) / 2 + screenRect.origin.x)
         let windowY = max(0, (screenRect.height - windowHeight) / 2 + screenRect.origin.y)
 
@@ -263,7 +263,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMe
         window.title = "视频剪辑姬 (Video Cutie)"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.minSize = NSSize(width: 860, height: 580)
+        window.minSize = NSSize(width: 720, height: 500)
         window.isReleasedWhenClosed = false
         window.delegate = self
 

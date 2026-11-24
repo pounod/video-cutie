@@ -1,5 +1,5 @@
 import React from 'react';
-import { Film, Volume2, Sparkles, Zap, HardDrive, FileText } from 'lucide-react';
+import { Film, Zap, FileText } from 'lucide-react';
 import { formatSecondsToHHMMSS } from '../utils/timeFormat';
 
 export interface VideoMetadata {
@@ -61,7 +61,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
             {metadata.width} × {metadata.height}
           </span>
           <span className="text-[11px] text-neutral-500 font-mono">
-            {metadata.aspectRatio} ({metadata.height >= 2160 ? '4K UHD' : metadata.height >= 1080 ? '1080p FHD' : '720p HD'})
+            {metadata.aspectRatio} · {metadata.videoCodec}
           </span>
         </div>
 
@@ -81,7 +81,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
             {formatFileSize(metadata.size)}
           </span>
           <span className="text-[11px] text-neutral-500 font-mono uppercase">
-            {metadata.format || 'MP4'}
+            {metadata.format || 'MP4'} · {metadata.audioCodec}
           </span>
         </div>
 
@@ -91,7 +91,7 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
             ~{formatFileSize(estimatedOutputSize)}
           </span>
           <span className="text-[11px] text-pink-600 dark:text-pink-400/80 font-mono">
-            100% 保留原画色彩与码率
+            无二次转码 · 原画输出
           </span>
         </div>
       </div>
@@ -104,32 +104,6 @@ export const VideoMetadataCard: React.FC<VideoMetadataCardProps> = ({ metadata, 
           <span className="text-neutral-800 dark:text-neutral-200 truncate">{metadata.filePath}</span>
         </div>
       )}
-
-      {/* Stream Copy Specifications Banner */}
-      <div className="p-3 bg-neutral-50 dark:bg-neutral-800/80 rounded-lg border border-neutral-200/60 dark:border-neutral-700/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-medium">
-            <Film className="w-3.5 h-3.5 text-pink-500" />
-            <span>视频流:</span>
-            <code className="bg-neutral-200/60 dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[11px] font-mono text-pink-600 dark:text-pink-400 font-semibold">
-              -c:v copy ({metadata.videoCodec})
-            </code>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-medium">
-            <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>音频流:</span>
-            <code className="bg-neutral-200/60 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-              -c:a copy ({metadata.audioCodec})
-            </code>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-          <Sparkles className="w-3 h-3 text-amber-500" />
-          <span>无二次转码 · 极速毫秒级输出</span>
-        </div>
-      </div>
     </div>
   );
 };

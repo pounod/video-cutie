@@ -18,12 +18,12 @@ export interface DmgPackageInfo {
 export const APP_INFO: DmgPackageInfo = {
   appNameZh: '视频剪辑姬',
   appNameEn: 'Video Cutie',
-  version: '1.2.3',
-  releaseTitle: '视频剪辑姬（Video Cutie）v1.2.3',
+  version: '1.2.4',
+  releaseTitle: '视频剪辑姬（Video Cutie）v1.2.4',
   bundleId: 'com.videocutie.macos.app',
   minSystemVersion: '11.0 (macOS Big Sur ~ macOS 15+ Sequoia)',
   architectures: ['arm64 (Apple Silicon M1/M2/M3/M4)', 'x86_64 (Intel 64-bit)'],
-  filename: 'VideoCutie-1.2.3-Universal.dmg',
+  filename: 'VideoCutie-1.2.4-Universal.dmg',
 };
 
 /**
@@ -69,14 +69,14 @@ export function generateInfoPlist(version: string = APP_INFO.version): string {
 }
 
 /**
- * Creates a synthetic DMG binary container package for version 1.2.3
+ * Creates a synthetic DMG binary container package for version 1.2.4
  */
 export function createSyntheticDmgBlob(): Blob {
-  const header = `koly` + `视频剪辑姬（Video Cutie）v1.2.3 Universal DMG [arm64 + x86_64, Bundled FFmpeg]`;
+  const header = `koly` + `视频剪辑姬（Video Cutie）v1.2.4 Universal DMG [arm64 + x86_64, Bundled FFmpeg]`;
   const info = generateInfoPlist();
   
   const content = `# ==============================================================================
-# 视频剪辑姬（Video Cutie）v1.2.3 macOS Universal Disk Image Bundle (.dmg)
+# 视频剪辑姬（Video Cutie）v1.2.4 macOS Universal Disk Image Bundle (.dmg)
 # Architectures: arm64 (Apple Silicon M1/M2/M3/M4) + x86_64 (Intel Core i5/i7/i9/Xeon)
 # Target OS: macOS 11.0 Big Sur ~ macOS 15+ Sequoia
 # FFmpeg: 内置打包 (Contents/MacOS/ffmpeg)，免终端，免手动安装
@@ -84,9 +84,9 @@ export function createSyntheticDmgBlob(): Blob {
 # ==============================================================================
 
 [DMG Header]
-Volume Name: 视频剪辑姬 1.2.3
+Volume Name: 视频剪辑姬 1.2.4
 Bundle Identifier: com.videocutie.macos.app
-Release Title: 视频剪辑姬（Video Cutie）v1.2.3
+Release Title: 视频剪辑姬（Video Cutie）v1.2.4
 Architectures: Universal Binary (arm64, x86_64)
 
 [App Bundle Structure]
@@ -127,13 +127,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号 (如 1.2.3)'
+        description: '发布版本号 (如 1.2.4)'
         required: true
-        default: '1.2.3'
+        default: '1.2.4'
       release_title:
         description: 'GitHub Release 标题'
         required: true
-        default: '视频剪辑姬（Video Cutie）v1.2.3'
+        default: '视频剪辑姬（Video Cutie）v1.2.4'
       create_release:
         description: '构建完成后是否自动在 GitHub Releases 发布'
         required: true
@@ -196,17 +196,17 @@ jobs:
 
       - name: 编译原生客户端、打包内置 FFmpeg 并生成 Universal DMG
         env:
-          APP_VERSION: \${{ github.event.inputs.version || '1.2.3' }}
+          APP_VERSION: \${{ github.event.inputs.version || '1.2.4' }}
           APP_NAME_ZH: "视频剪辑姬"
           APP_NAME_EN: "Video Cutie"
         run: |
           chmod +x ./scripts/build-dmg.sh
-          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.2.3' }}"
+          ./scripts/build-dmg.sh "\${{ github.event.inputs.version || '1.2.4' }}"
 
       - name: 准备优化完成汇报 (Release Notes)
         id: release_notes
         run: |
-          TARGET_VER="\${{ github.event.inputs.version || '1.2.3' }}"
+          TARGET_VER="\${{ github.event.inputs.version || '1.2.4' }}"
           echo "🔍 正在匹配版本 v\${TARGET_VER} 的优化完成验收报告..."
           if [ -f "RELEASE_REPORT_v\${TARGET_VER}.md" ]; then
             echo "notes_file=RELEASE_REPORT_v\${TARGET_VER}.md" >> $GITHUB_OUTPUT
@@ -214,9 +214,9 @@ jobs:
           elif [ -f "RELEASE_REPORT_LATEST.md" ]; then
             echo "notes_file=RELEASE_REPORT_LATEST.md" >> $GITHUB_OUTPUT
             echo "✅ 使用最新综合验收报告: RELEASE_REPORT_LATEST.md"
-          elif [ -f "RELEASE_REPORT_v1.2.3.md" ]; then
-            echo "notes_file=RELEASE_REPORT_v1.2.3.md" >> $GITHUB_OUTPUT
-            echo "✅ 使用 v1.2.3 验收报告: RELEASE_REPORT_v1.2.3.md"
+          elif [ -f "RELEASE_REPORT_v1.2.4.md" ]; then
+            echo "notes_file=RELEASE_REPORT_v1.2.4.md" >> $GITHUB_OUTPUT
+            echo "✅ 使用 v1.2.4 验收报告: RELEASE_REPORT_v1.2.4.md"
           elif [ -f "RELEASE_REPORT_v1.2.0.md" ]; then
             echo "notes_file=RELEASE_REPORT_v1.2.0.md" >> $GITHUB_OUTPUT
           else
@@ -235,8 +235,8 @@ jobs:
         if: \${{ github.event.inputs.create_release != false }}
         uses: softprops/action-gh-release@v2
         with:
-          name: \${{ github.event.inputs.release_title || '视频剪辑姬（Video Cutie）v1.2.3' }}
-          tag_name: "v\${{ github.event.inputs.version || '1.2.3' }}"
+          name: \${{ github.event.inputs.release_title || '视频剪辑姬（Video Cutie）v1.2.4' }}
+          tag_name: "v\${{ github.event.inputs.version || '1.2.4' }}"
           body_path: \${{ steps.release_notes.outputs.notes_file }}
           draft: false
           prerelease: \${{ github.event.inputs.prerelease == true || github.event.inputs.prerelease == 'true' }}
